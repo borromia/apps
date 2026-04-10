@@ -20,22 +20,22 @@ Build a single-file browser physics puzzle game (`weak-threads/index.html`) usin
     - Do NOT use `Matter.Runner` — `step(dt)` calls `Matter.Engine.update(engine, dt * 1000)`
     - _Requirements: 6.1, 6.3_
 
-- [-] 3. Implement data models and level definitions
-  - [-] 3.1 Define `LevelData`, `AnchorDef`, `ThreadDef`, `GemDef`, `BasketDef` as plain JS object shapes (JSDoc comments)
+- [x] 3. Implement data models and level definitions
+  - [x] 3.1 Define `LevelData`, `AnchorDef`, `ThreadDef`, `GemDef`, `BasketDef` as plain JS object shapes (JSDoc comments)
     - _Requirements: 13.2_
-  - [-] 3.2 Write at least 5 handcrafted `LevelData` entries in a `LEVELS` array, ordered by ascending `id`
+  - [x] 3.2 Write at least 5 handcrafted `LevelData` entries in a `LEVELS` array, ordered by ascending `id`
     - Each level must have unique id, display name, ≥1 anchor, ≥1 thread, a gem def, and a basket def
     - Vary thread count and layout to create increasing difficulty
     - _Requirements: 13.1, 13.2, 13.3_
 
-- [~] 4. Implement `LevelManager`
-  - [~] 4.1 Implement `loadLevel(index)`
+- [-] 4. Implement `LevelManager`
+  - [-] 4.1 Implement `loadLevel(index)`
     - Clamp index to `[0, LEVELS.length - 1]`; log warning if out of bounds
     - Call `engine.clear()`, then add anchor static bodies, gem dynamic circle body, basket sensor body
     - Build Matter.js constraints from `ThreadDef` entries; populate `activeThreads`
     - Set `gameState = 'PLAYING'`
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
-  - [~] 4.2 Implement `hitTestThread(x, y, threads)`
+  - [-] 4.2 Implement `hitTestThread(x, y, threads)`
     - Sample each thread at 10 evenly-spaced points using `lerp` on `bodyA.position` / `bodyB.position`
     - Track minimum distance; return closest thread within 12px, or `null`
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
@@ -45,29 +45,29 @@ Build a single-file browser physics puzzle game (`weak-threads/index.html`) usin
   - [ ]* 4.4 Write property test for `hitTestThread` — Property 7: returns null when no thread within threshold
     - **Property 7: hitTestThread returns null when no thread is within threshold**
     - **Validates: Requirements 3.2**
-  - [~] 4.5 Implement `cutThread(thread)`
+  - [-] 4.5 Implement `cutThread(thread)`
     - Remove constraint from `engine` and from `activeThreads`
     - Assert `activeThreads.length` decremented by exactly 1
     - _Requirements: 2.3, 2.5_
   - [ ]* 4.6 Write property test for cut operations — Property 2: no-duplicate invariant
     - **Property 2: Cut operations maintain no-duplicate invariant**
     - **Validates: Requirements 2.3, 2.5**
-  - [~] 4.7 Implement `computeStars(totalThreads, threadsRemaining)`
+  - [-] 4.7 Implement `computeStars(totalThreads, threadsRemaining)`
     - Pure function: ratio ≥ 0.67 → 3, ≥ 0.34 → 2, else → 1
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
   - [ ]* 4.8 Write property test for `computeStars` — Property 8: always returns value in {1, 2, 3}
     - **Property 8: Star rating is always in {1, 2, 3}**
     - **Validates: Requirements 5.1, 5.2, 5.3, 5.4**
-  - [~] 4.9 Implement win handler (`onGemCaught`)
+  - [-] 4.9 Implement win handler (`onGemCaught`)
     - Guard: only act when `gameState === 'PLAYING'`; set `gameState = 'WIN'`; compute and store `starRating`
     - _Requirements: 4.1, 4.2, 4.3, 4.5_
   - [ ]* 4.10 Write property test for win condition — Property 4: fires at most once per level
     - **Property 4: Win condition fires at most once per level**
     - **Validates: Requirements 4.3**
-  - [~] 4.11 Implement lose condition check (called each frame)
+  - [-] 4.11 Implement lose condition check (called each frame)
     - If `gem.position.y > canvas.height + 100` and `gameState === 'PLAYING'`, set `gameState = 'LOSE'`
     - _Requirements: 7.1_
-  - [~] 4.12 Implement game-complete handling
+  - [-] 4.12 Implement game-complete handling
     - When player completes the final level, display game-complete message instead of advancing
     - _Requirements: 13.4_
 

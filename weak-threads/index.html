@@ -265,6 +265,153 @@
         basket: { x: 360, y: 510, width: 80, height: 40 }
       }
     ];
+
+    // ─── LevelManager ──────────────────────────────────────────────────────
+
+    class LevelManager {
+      constructor(engine, canvas) {
+        this.engine = engine;
+        this.canvas = canvas;
+        this.currentIndex = 0;
+        this.currentLevel = null;
+        this.gemBody = null;
+        this.basketBody = null;
+        this.anchorBodies = {};
+        this.activeThreads = [];
+        this.totalThreads = 0;
+        this.gameState = 'LOADING';
+        this.starRating = null;
+      }
+
+      // Task 4.1 — load a level by index
+      loadLevel(index) {
+        // Clamp index to valid range
+        let clampedIndex = index;
+        if (index < 0 || index >= LEVELS.length) {
+          console.warn(`loadLevel: index ${index} out of bounds, clamping to [0, ${LEVELS.length - 1}]`);
+          clampedIndex = Math.max(0, Math.min(index, LEVELS.length - 1));
+        }
+
+        this.engine.clear();
+
+        this.currentIndex = clampedIndex;
+        this.currentLevel = LEVELS[clampedIndex];
+        this.totalThreads = this.currentLevel.threads.length;
+
+        const level = this.currentLevel;
+
+        // Create anchor static bodies
+        this.anchorBodies = {};
+        for (const a of level.anchors) {
+          const body = Matter.Bodies.circle(a.x, a.y, 8, { isStatic: true, label: 'anchor_' + a.id });
+          this.anchorBodies[a.id] = body;
+          this.engine.addBody(body);
+        }
+
+        // Create gem dynamic body
+        const gem = level.gem;
+        this.gemBody = Matter.Bodies.circle(gem.x, gem.y, gem.radius, {
+          label: 'gem',
+          restitution: 0.3,
+          friction: 0.1
+        });
+        this.engine.addBody(this.gemBody);
+
+        // Create basket sensor body
+        const basket = level.basket;
+        this.basketBody = Matter.Bodies.rectangle(
+          basket.x + basket.width / 2,
+          basket.y + basket.height / 2,
+          basket.width,
+          basket.height,
+          { isStatic: true, isSensor: true, label: 'basket' }
+        );
+        this.engine.addBody(this.basketBody);
+
+        // Build constraints from ThreadDef entries
+        this.activeThreads = [];
+        for (const t of level.threads) {
+          const resolveBody = (ref) => ref === 'gem' ? this.gemBody : this.anchorBodies[ref];
+          const bodyA = resolveBody(t.from);
+          const bodyB = resolveBody(t.to);
+          const c = Matter.Constraint.create({
+            bodyA,
+            bodyB,
+            length: t.length,
+            stiffness: t.stiffness,
+            label: t.id
+          });
+          this.engine.addConstraint(c);
+          this.activeThreads.push(c);
+        }
+
+        this.gameState = 'PLAYING';
+        this.starRating = null;
+      }
+
+      // Task 4.2 — hit test threads at canvas coordinates
+      hitTestThread(x, y, threads) {
+        if (threads.length === 0) return null;
+
+        let closest = null;
+        let minDist = 12; // HitThreshold
+
+        for (const thread of threads) {
+          for (let i = 0; i <= 9; i++) {
+            const t = i / 9;
+            const px = thread.bodyA.position.x + (thread.bodyB.position.x - thread.bodyA.position.x) * t;
+            const py = thread.bodyA.position.y + (thread.bodyB.position.y - thread.bodyA.position.y) * t;
+            const dist = Math.sqrt((px - x) * (px - x) + (py - y) * (py - y));
+            if (dist < minDist) {
+              minDist = dist;
+              closest = thread;
+            }
+          }
+        }
+
+        return closest;
+      }
+
+      // Task 4.5 — cut a thread
+      cutThread(thread) {
+        this.engine.removeConstraint(thread);
+        const idx = this.activeThreads.indexOf(thread);
+        if (idx !== -1) {
+          this.activeThreads.splice(idx, 1);
+        }
+      }
+
+      // Task 4.7 — compute star rating (pure)
+      computeStars(totalThreads, threadsRemaining) {
+        const ratio = threadsRemaining / totalThreads;
+        if (ratio >= 0.67) return 3;
+        if (ratio >= 0.34) return 2;
+        return 1;
+      }
+
+      // Task 4.9 — handle gem caught
+      onGemCaught() {
+        if (this.gameState !== 'PLAYING') return;
+        this.gameState = 'WIN';
+        this.starRating = this.computeStars(this.totalThreads, this.activeThreads.length);
+      }
+
+      // Task 4.11 — check lose condition (called each frame)
+      checkLoseCondition() {
+        if (this.gemBody && this.gemBody.position.y > this.canvas.height + 100 && this.gameState === 'PLAYING') {
+          this.gameState = 'LOSE';
+        }
+      }
+
+      // Task 4.12 — advance to next level
+      advanceLevel() {
+        if (this.currentIndex >= LEVELS.length - 1) {
+          this.gameState = 'GAME_COMPLETE';
+        } else {
+          this.loadLevel(this.currentIndex + 1);
+        }
+      }
+    }
   }
 </script>
 </body>
