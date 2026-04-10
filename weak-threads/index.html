@@ -677,6 +677,60 @@
         ctx.restore();
       }
     }
+
+    // ─── InputHandler ──────────────────────────────────────────────────────
+
+    class InputHandler {
+      constructor() {
+        this._cutHandler = null;
+        this._canvas = null;
+        this._onMouseDown = null;
+        this._onTouchStart = null;
+      }
+
+      // Register the cut callback
+      onCut(handler) {
+        this._cutHandler = handler;
+      }
+
+      // Attach event listeners to canvas
+      attach(canvas) {
+        this._canvas = canvas;
+
+        this._onMouseDown = (e) => {
+          const { x, y } = this._toCanvasCoords(e.clientX, e.clientY);
+          if (this._cutHandler) this._cutHandler(x, y);
+        };
+
+        this._onTouchStart = (e) => {
+          e.preventDefault();
+          const touch = e.touches[0];
+          const { x, y } = this._toCanvasCoords(touch.clientX, touch.clientY);
+          if (this._cutHandler) this._cutHandler(x, y);
+        };
+
+        canvas.addEventListener('mousedown', this._onMouseDown);
+        canvas.addEventListener('touchstart', this._onTouchStart, { passive: false });
+      }
+
+      // Remove event listeners
+      detach() {
+        if (!this._canvas) return;
+        this._canvas.removeEventListener('mousedown', this._onMouseDown);
+        this._canvas.removeEventListener('touchstart', this._onTouchStart);
+        this._canvas = null;
+      }
+
+      // Convert client coordinates to canvas logical pixel space
+      _toCanvasCoords(clientX, clientY) {
+        const rect = this._canvas.getBoundingClientRect();
+        // getBoundingClientRect gives CSS pixel position; canvas CSS size = LOGICAL_W x LOGICAL_H
+        // so we just subtract the rect offset (no dpr scaling needed for logical coords)
+        const x = (clientX - rect.left) * (LOGICAL_W / rect.width);
+        const y = (clientY - rect.top) * (LOGICAL_H / rect.height);
+        return { x, y };
+      }
+    }
   }
 </script>
 </body>

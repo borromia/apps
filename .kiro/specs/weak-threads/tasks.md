@@ -74,24 +74,24 @@ Build a single-file browser physics puzzle game (`weak-threads/index.html`) usin
 - [x] 5. Checkpoint — core logic complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 6. Implement `Renderer`
-  - [-] 6.1 Implement `init(canvas)` and `drawFrame(state)`
+- [x] 6. Implement `Renderer`
+  - [x] 6.1 Implement `init(canvas)` and `drawFrame(state)`
     - Clear canvas each frame; draw anchors, threads, gem, basket, particles, HUD
     - _Requirements: 8.1_
-  - [-] 6.2 Implement `drawThread(ctx, constraint, alpha)`
+  - [x] 6.2 Implement `drawThread(ctx, constraint, alpha)`
     - Use `ctx.save()` / `ctx.restore()`; draw line with `shadowBlur` glow from `bodyA.position` to `bodyB.position`
     - Must not mutate constraint or body state
     - _Requirements: 8.2, 8.6_
   - [ ]* 6.3 Write property test for `drawThread` — Property 10: does not mutate physics state
     - **Property 10: drawThread does not mutate physics state**
     - **Validates: Requirements 8.6**
-  - [-] 6.4 Implement gem drawing (circle with radial gradient) and basket drawing
+  - [x] 6.4 Implement gem drawing (circle with radial gradient) and basket drawing
     - _Requirements: 8.3, 8.4_
-  - [-] 6.5 Implement HUD: level number, star indicators, restart button
+  - [x] 6.5 Implement HUD: level number, star indicators, restart button
     - _Requirements: 8.5_
-  - [-] 6.6 Implement win overlay (level-complete with star rating) and lose overlay ("Try Again")
+  - [x] 6.6 Implement win overlay (level-complete with star rating) and lose overlay ("Try Again")
     - _Requirements: 4.4, 7.2_
-  - [-] 6.7 Implement `spawnParticles(x, y, type)` and particle update/draw loop
+  - [x] 6.7 Implement `spawnParticles(x, y, type)` and particle update/draw loop
     - Spawn cut-type particles on thread cut; win-type particles on gem caught
     - Each frame: update position by velocity, decrement `life`; remove particles with `life <= 0`
     - Cap particle array at 200; evict oldest when exceeded
@@ -104,8 +104,8 @@ Build a single-file browser physics puzzle game (`weak-threads/index.html`) usin
     - **Property 9: Particle array never exceeds cap**
     - **Validates: Requirements 9.6**
 
-- [~] 7. Implement `InputHandler`
-  - [~] 7.1 Implement `attach(canvas)`, `detach()`, and `onCut(handler)`
+- [-] 7. Implement `InputHandler`
+  - [-] 7.1 Implement `attach(canvas)`, `detach()`, and `onCut(handler)`
     - Listen for `mousedown` and `touchstart` on canvas
     - Convert event coordinates to canvas space accounting for `devicePixelRatio` and `getBoundingClientRect()` offset
     - Fire `onCut` callback with canvas-space coordinates
