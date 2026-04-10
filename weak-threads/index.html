@@ -422,6 +422,22 @@
         this.particles = [];
         this.restartBtnRect = null;
         this.nextBtnRect = null;
+        // Snapshots of cut threads: { x1, y1, x2, y2 }
+        this.cutRopes = [];
+      }
+
+      clearCutRopes() {
+        this.cutRopes = [];
+      }
+
+      // Record a cut thread's last position so it can be drawn as a limp rope
+      recordCutRope(constraint) {
+        this.cutRopes.push({
+          x1: constraint.bodyA.position.x,
+          y1: constraint.bodyA.position.y,
+          x2: constraint.bodyB.position.x,
+          y2: constraint.bodyB.position.y,
+        });
       }
 
       // Task 6.1 — init and drawFrame
@@ -442,6 +458,11 @@
 
         this.drawAnchors(ctx, anchorBodies);
 
+        // Draw cut rope remnants (faded, grey) before active threads
+        for (const rope of this.cutRopes) {
+          this.drawRopeSegment(ctx, rope.x1, rope.y1, rope.x2, rope.y2, 0.35, true);
+        }
+
         for (const thread of activeThreads) {
           this.drawThread(ctx, thread);
         }
@@ -459,18 +480,54 @@
         if (gameState === 'GAME_COMPLETE') this.drawGameCompleteOverlay(ctx);
       }
 
-      // Task 6.2 — drawThread
+      // Task 6.2 — drawThread (rope style)
       drawThread(ctx, constraint, alpha = 1) {
+        const ax = constraint.bodyA.position.x, ay = constraint.bodyA.position.y;
+        const bx = constraint.bodyB.position.x, by = constraint.bodyB.position.y;
+        this.drawRopeSegment(ctx, ax, ay, bx, by, alpha, false);
+      }
+
+      // Shared rope drawing: thick braided look with a highlight stripe
+      // cut=true renders a grey frayed remnant
+      drawRopeSegment(ctx, x1, y1, x2, y2, alpha, cut) {
+        const baseColor    = cut ? '#4a4060' : '#7c5cbf';
+        const midColor     = cut ? '#5a5070' : '#9d7de8';
+        const highlightCol = cut ? '#6a6080' : '#c4b0f5';
+
         ctx.save();
         ctx.globalAlpha = alpha;
-        ctx.strokeStyle = '#a78bfa';
-        ctx.lineWidth = 2;
-        ctx.shadowColor = '#a78bfa';
-        ctx.shadowBlur = 8;
+
+        // Thick base strand
         ctx.beginPath();
-        ctx.moveTo(constraint.bodyA.position.x, constraint.bodyA.position.y);
-        ctx.lineTo(constraint.bodyB.position.x, constraint.bodyB.position.y);
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = baseColor;
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+        ctx.shadowColor = cut ? 'transparent' : '#7c5cbf';
+        ctx.shadowBlur = cut ? 0 : 6;
         ctx.stroke();
+
+        // Mid strand (slightly narrower, offset colour)
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = midColor;
+        ctx.lineWidth = 3;
+        ctx.shadowBlur = 0;
+        ctx.stroke();
+
+        // Highlight stripe — thin dashed line to suggest twist
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = highlightCol;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([6, 8]);
+        ctx.lineDashOffset = 0;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
         ctx.restore();
       }
 
@@ -751,6 +808,7 @@
       if (thread) {
         const mx = (thread.bodyA.position.x + thread.bodyB.position.x) / 2;
         const my = (thread.bodyA.position.y + thread.bodyB.position.y) / 2;
+        renderer.recordCutRope(thread);
         levelManager.cutThread(thread);
         renderer.spawnParticles(mx, my, 'cut');
       }
@@ -818,12 +876,14 @@
       const rb = renderer.restartBtnRect;
       if (rb && x >= rb.x && x <= rb.x + rb.w && y >= rb.y && y <= rb.y + rb.h) {
         levelManager.loadLevel(levelManager.currentIndex);
+        renderer.clearCutRopes();
         return;
       }
 
       // "Try Again" overlay — click anywhere on lose overlay restarts
       if (levelManager.gameState === 'LOSE') {
         levelManager.loadLevel(levelManager.currentIndex);
+        renderer.clearCutRopes();
         return;
       }
 
@@ -832,6 +892,7 @@
         const nb = renderer.nextBtnRect;
         if (nb && x >= nb.x && x <= nb.x + nb.w && y >= nb.y && y <= nb.y + nb.h) {
           levelManager.advanceLevel();
+          renderer.clearCutRopes();
         }
         return;
       }
@@ -848,11 +909,13 @@
       const rb = renderer.restartBtnRect;
       if (rb && x >= rb.x && x <= rb.x + rb.w && y >= rb.y && y <= rb.y + rb.h) {
         levelManager.loadLevel(levelManager.currentIndex);
+        renderer.clearCutRopes();
         return;
       }
 
       if (levelManager.gameState === 'LOSE') {
         levelManager.loadLevel(levelManager.currentIndex);
+        renderer.clearCutRopes();
         return;
       }
 
@@ -860,6 +923,7 @@
         const nb = renderer.nextBtnRect;
         if (nb && x >= nb.x && x <= nb.x + nb.w && y >= nb.y && y <= nb.y + nb.h) {
           levelManager.advanceLevel();
+          renderer.clearCutRopes();
         }
         return;
       }
@@ -867,6 +931,7 @@
 
     // Start the game
     levelManager.loadLevel(0);
+    renderer.clearCutRopes();
     requestAnimationFrame(gameLoop);
 
   } // end else block
