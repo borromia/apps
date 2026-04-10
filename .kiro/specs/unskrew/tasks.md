@@ -22,23 +22,23 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
   - [x] 2.3 Declare top-level constants: `GRAVITY = 980`, `RESTITUTION = 0.35`, `FRICTION = 0.85`, `TAP_RADIUS = 24`, `UNSCREW_DURATION = 0.35`, `UNSCREW_SPEED = Math.PI * 4`, `PARTICLE_CAP = 200`
     - _Requirements: 6.1, 6.3, 6.4, 5.1, 5.2_
 
-- [-] 3. Implement `Physics` module
-  - [-] 3.1 Implement `integrate(balls, platforms, dt)`
+- [x] 3. Implement `Physics` module
+  - [x] 3.1 Implement `integrate(balls, platforms, dt)`
     - Apply `GRAVITY` to `vy` for each dynamic non-captured ball
     - Euler-integrate `x` and `y`
     - For each platform, call `circleOverlapsRect`; if overlapping, compute collision normal and penetration depth, displace ball, reflect velocity with `RESTITUTION`, apply `FRICTION` to tangential component
     - Skip balls where `dynamic === false` or `captured === true`
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
-  - [-] 3.2 Implement `resolveWallBounce(ball, canvasW, canvasH)`
+  - [x] 3.2 Implement `resolveWallBounce(ball, canvasW, canvasH)`
     - Clamp ball to canvas bounds; reflect `vx` on left/right walls, reflect `vy` on top wall with `RESTITUTION`
     - _Requirements: 6.8_
-  - [-] 3.3 Implement `checkTubeCapture(balls, tubes)`
+  - [x] 3.3 Implement `checkTubeCapture(balls, tubes)`
     - For each dynamic non-captured ball, check if ball centre is within tube mouth AABB and tube has capacity
     - On capture: set `ball.vx = 0`, `ball.vy = 0`, `ball.captured = true`, `ball.capturedTubeId`, snap ball position to stacked rest position inside tube, push ball id to `tube.capturedBalls`
     - Return array of `CaptureEvent` with `colorMatch` flag
     - Do not modify balls where `dynamic === false`
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8_
-  - [-] 3.4 Implement helper `circleOverlapsRect(ball, rect)` and `computeCollisionNormal(ball, rect)`
+  - [x] 3.4 Implement helper `circleOverlapsRect(ball, rect)` and `computeCollisionNormal(ball, rect)`
     - Standard AABB-circle overlap test; return closest-point normal
     - _Requirements: 6.3_
   - [ ]* 3.5 Write property test for `integrate` — Property 3: dt clamping produces no NaN
@@ -57,11 +57,11 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
     - **Property 12: Color mismatch does not prevent capture but does prevent win**
     - **Validates: Requirements 7.7, 8.3**
 
-- [~] 4. Checkpoint — physics complete
+- [x] 4. Checkpoint — physics complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [~] 5. Implement `LevelManager`
-  - [~] 5.1 Implement `loadLevel(index)`
+- [-] 5. Implement `LevelManager`
+  - [-] 5.1 Implement `loadLevel(index)`
     - Clamp index to `[0, LEVELS.length - 1]`; log warning if out of bounds
     - Deep-clone `LEVELS[index]` into runtime `BallState[]`, `BoltState[]`, `TubeState[]`, `PlatformDef[]`
     - Set every ball `dynamic = false`, `captured = false`, `vx = 0`, `vy = 0`
@@ -70,7 +70,7 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
   - [ ]* 5.2 Write property test for `loadLevel` — Property 1: balls populated correctly
     - **Property 1: loadLevel populates balls correctly**
     - **Validates: Requirements 2.2, 2.3**
-  - [~] 5.3 Implement `hitTestBolt(x, y)`
+  - [-] 5.3 Implement `hitTestBolt(x, y)`
     - Iterate `activeBolts` where `bolt.removed === false`; return first bolt within `TAP_RADIUS`, else `null`
     - No mutations
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
@@ -80,10 +80,10 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
   - [ ]* 5.5 Write property test for `hitTestBolt` — Property 6: returns null when no bolt within TAP_RADIUS
     - **Property 6: hitTestBolt returns null when no bolt is within TAP_RADIUS**
     - **Validates: Requirements 4.2**
-  - [~] 5.6 Implement `unscrewBolt(bolt)`
+  - [-] 5.6 Implement `unscrewBolt(bolt)`
     - Set `bolt.unscrewing = true`, `bolt.animTimer = 0`
     - _Requirements: 5.1_
-  - [~] 5.7 Implement `updateBoltAnimations(dt)`
+  - [-] 5.7 Implement `updateBoltAnimations(dt)`
     - For each unscrewing bolt: increment `animTimer` by `dt`, increment `bolt.angle` by `UNSCREW_SPEED * dt`
     - When `animTimer >= UNSCREW_DURATION`: set `bolt.removed = true`, `bolt.unscrewing = false`, remove from `activeBolts`
     - For each ball held by this bolt: if all holding bolts have `removed === true`, set `ball.dynamic = true`
@@ -94,10 +94,10 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
   - [ ]* 5.9 Write property test for bolt animation — Property 2: ball dynamic only when all bolts removed
     - **Property 2: Ball becomes dynamic only when all holding bolts are removed**
     - **Validates: Requirements 5.5, 5.6**
-  - [~] 5.10 Implement `onBallCaptured(captureEvent)`
+  - [-] 5.10 Implement `onBallCaptured(captureEvent)`
     - Update internal state; call `checkWin()` after each capture
     - _Requirements: 8.1, 8.4_
-  - [~] 5.11 Implement `checkWin()`
+  - [-] 5.11 Implement `checkWin()`
     - Return `true` iff every ball has `captured === true` and `tube.color === ball.color` for its `capturedTubeId`
     - No side effects on ball/tube state
     - When `true`: set `gameState = 'WIN'` if more levels remain, else `gameState = 'GAME_COMPLETE'`
@@ -105,7 +105,7 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
   - [ ]* 5.12 Write property test for `checkWin` — Property 4: win requires all balls captured in matching tubes
     - **Property 4: Win condition requires all balls captured in matching tubes**
     - **Validates: Requirements 8.1, 8.2, 8.3**
-  - [~] 5.13 Implement `checkLoseCondition()`
+  - [-] 5.13 Implement `checkLoseCondition()`
     - If any dynamic non-captured ball has `y > CANVAS_H + ball.radius * 2`, set `gameState = 'LOSE'`
     - _Requirements: 9.1_
 

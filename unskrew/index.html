@@ -318,6 +318,145 @@
       return { nx, ny, penetration };
     }
   }
+
+  // ── LevelManager ─────────────────────────────────────────────────────────────
+
+  class LevelManager {
+    constructor() {
+      this.balls = [];
+      this.bolts = [];
+      this.tubes = [];
+      this.platforms = [];
+      this.activeBolts = [];  // bolts where removed === false
+      this.gameState = 'LOADING';
+      this.currentIndex = 0;
+    }
+
+    /**
+     * Load a level by index, deep-cloning all definitions into runtime state.
+     * @param {number} index
+     */
+    loadLevel(index) {
+      if (index < 0 || index >= LEVELS.length) {
+        console.warn(`loadLevel: index ${index} out of bounds [0, ${LEVELS.length - 1}], clamping.`);
+        index = Math.max(0, Math.min(index, LEVELS.length - 1));
+      }
+      this.currentIndex = index;
+      this.platforms = LEVELS[index].platforms.map(p => ({ ...p }));
+      this.balls = LEVELS[index].balls.map(b => ({ ...b, vx: 0, vy: 0, dynamic: false, captured: false, capturedTubeId: null }));
+      this.bolts = LEVELS[index].bolts.map(b => ({ ...b, angle: 0, unscrewing: false, animTimer: 0, removed: false }));
+      this.tubes = LEVELS[index].tubes.map(t => ({ ...t, capturedBalls: [] }));
+      this.activeBolts = [...this.bolts];
+      this.gameState = 'PLAYING';
+    }
+
+    /**
+     * Hit-test a tap against active bolts.
+     * @param {number} x
+     * @param {number} y
+     * @returns {BoltState|null}
+     */
+    hitTestBolt(x, y) {
+      for (const bolt of this.activeBolts) {
+        if (bolt.removed) continue;
+        if (Math.sqrt((bolt.x - x) ** 2 + (bolt.y - y) ** 2) <= TAP_RADIUS) {
+          return bolt;
+        }
+      }
+      return null;
+    }
+
+    /**
+     * Begin the unscrew animation for a bolt.
+     * @param {BoltState} bolt
+     */
+    unscrewBolt(bolt) {
+      bolt.unscrewing = true;
+      bolt.animTimer = 0;
+    }
+
+    /**
+     * Advance bolt unscrew animations by dt seconds.
+     * Releases balls when all their holding bolts are removed.
+     * @param {number} dt
+     */
+    updateBoltAnimations(dt) {
+      for (const bolt of this.activeBolts) {
+        if (!bolt.unscrewing) continue;
+        bolt.animTimer += dt;
+        bolt.angle += UNSCREW_SPEED * dt;
+        if (bolt.animTimer >= UNSCREW_DURATION) {
+          bolt.removed = true;
+          bolt.unscrewing = false;
+          this.activeBolts = this.activeBolts.filter(b => !b.removed);
+          for (const ballId of bolt.holdsBallIds) {
+            const ball = this.balls.find(b => b.id === ballId);
+            if (!ball) continue;
+            const allRemoved = this.bolts.filter(b => b.holdsBallIds.includes(ballId)).every(b => b.removed);
+            if (allRemoved) {
+              ball.dynamic = true;
+            }
+          }
+        }
+      }
+    }
+
+    /**
+     * Called after Physics.checkTubeCapture processes a capture event.
+     * @param {CaptureEvent} captureEvent
+     */
+    onBallCaptured(captureEvent) {
+      this.checkWin();
+    }
+
+    /**
+     * Check whether all balls are captured in color-matching tubes.
+     * Sets gameState to WIN or GAME_COMPLETE if so.
+     * @returns {boolean}
+     */
+    checkWin() {
+      for (const ball of this.balls) {
+        if (!ball.captured) return false;
+        const tube = this.tubes.find(t => t.id === ball.capturedTubeId);
+        if (!tube || tube.color !== ball.color) return false;
+      }
+      if (this.currentIndex < LEVELS.length - 1) {
+        this.gameState = 'WIN';
+      } else {
+        this.gameState = 'GAME_COMPLETE';
+      }
+      return true;
+    }
+
+    /**
+     * Check whether any ball has fallen off the bottom of the canvas.
+     */
+    checkLoseCondition() {
+      for (const ball of this.balls) {
+        if (!ball.captured && ball.dynamic) {
+          if (ball.y > CANVAS_H + ball.radius * 2) {
+            this.gameState = 'LOSE';
+            return;
+          }
+        }
+      }
+    }
+
+    /**
+     * Return a snapshot of state needed by the Renderer.
+     * @returns {Object}
+     */
+    getRenderState() {
+      return {
+        balls: this.balls,
+        bolts: this.bolts,
+        tubes: this.tubes,
+        platforms: this.platforms,
+        gameState: this.gameState,
+        currentIndex: this.currentIndex,
+      };
+    }
+  }
 </script>
 </body>
 </html>
