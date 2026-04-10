@@ -29,8 +29,10 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      overflow: hidden;
+      justify-content: flex-start;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-bottom: 60px;
     }
 
     /* Blurry background blobs */
@@ -56,6 +58,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      width: 100%;
     }
 
     .page-header {
@@ -133,6 +136,26 @@
       width: 100%;
       height: 100%;
     }
+
+    .section-label {
+      width: 100%;
+      max-width: 600px;
+      padding: 0 60px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+      margin-top: 8px;
+    }
+
+    .divider {
+      width: calc(100% - 120px);
+      max-width: 600px;
+      height: 1px;
+      background: rgba(255,255,255,0.07);
+      margin: 4px 0 0;
+    }
   </style>
 </head>
 <body>
@@ -149,6 +172,8 @@
       <p class="page-subtitle" id="last-visit"></p>
     </div>
 
+    <p class="section-label">Apps</p>
+    <div class="divider"></div>
     <div class="grid">
 
     <a class="app-item" href="./comic-reader/">
@@ -208,6 +233,49 @@
         </svg>
       </div>
       <span class="app-label">Comic Reader</span>
+    </a>
+
+  </div>
+  </div>
+
+  <p class="section-label">Games</p>
+  <div class="divider"></div>
+  <div class="grid">
+
+    <a class="app-item" href="./weak-threads/">
+      <div class="app-icon">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+          <defs>
+            <linearGradient id="wt-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#1a0a2e"/>
+              <stop offset="100%" style="stop-color:#0d1a2e"/>
+            </linearGradient>
+            <radialGradient id="wt-gem" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" style="stop-color:#e0d4ff"/>
+              <stop offset="100%" style="stop-color:#a78bfa"/>
+            </radialGradient>
+          </defs>
+          <!-- Background -->
+          <rect width="100" height="100" rx="22" fill="url(#wt-bg)"/>
+          <!-- Anchor dots -->
+          <circle cx="30" cy="18" r="5" fill="#f59e0b" opacity="0.9"/>
+          <circle cx="70" cy="18" r="5" fill="#f59e0b" opacity="0.9"/>
+          <!-- Rope from left anchor to gem -->
+          <line x1="30" y1="18" x2="50" y2="52" stroke="#7c5cbf" stroke-width="3" stroke-linecap="round"/>
+          <line x1="30" y1="18" x2="50" y2="52" stroke="#c4b0f5" stroke-width="1" stroke-dasharray="5 7" stroke-linecap="round"/>
+          <!-- Rope from right anchor to gem -->
+          <line x1="70" y1="18" x2="50" y2="52" stroke="#7c5cbf" stroke-width="3" stroke-linecap="round"/>
+          <line x1="70" y1="18" x2="50" y2="52" stroke="#c4b0f5" stroke-width="1" stroke-dasharray="5 7" stroke-linecap="round"/>
+          <!-- Cut mark on right rope -->
+          <line x1="63" y1="30" x2="59" y2="36" stroke="#ff6b6b" stroke-width="2" stroke-linecap="round"/>
+          <line x1="59" y1="30" x2="63" y2="36" stroke="#ff6b6b" stroke-width="2" stroke-linecap="round"/>
+          <!-- Gem -->
+          <circle cx="50" cy="52" r="10" fill="url(#wt-gem)"/>
+          <!-- Basket -->
+          <rect x="34" y="76" width="32" height="14" rx="3" fill="none" stroke="#34d399" stroke-width="2.5"/>
+        </svg>
+      </div>
+      <span class="app-label">Weak Threads</span>
     </a>
 
   </div>
