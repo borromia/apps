@@ -13,17 +13,17 @@ Build a single-file browser physics puzzle game (`weak-threads/index.html`) usin
   - Size canvas backing store by `devicePixelRatio`; scale context by `devicePixelRatio`
   - _Requirements: 11.1, 11.2, 12.1, 12.2_
 
-- [-] 2. Implement `PhysicsEngine` wrapper
-  - [-] 2.1 Write the `PhysicsEngine` class
+- [x] 2. Implement `PhysicsEngine` wrapper
+  - [x] 2.1 Write the `PhysicsEngine` class
     - Implement `init(canvas)`, `addBody`, `removeBody`, `addConstraint`, `removeConstraint`, `onCollisionStart`, `step(dt)`, `clear()`
     - Use `Matter.Engine.create()`, `Matter.World`, and `Matter.Events.on` for collision subscription
     - Do NOT use `Matter.Runner` — `step(dt)` calls `Matter.Engine.update(engine, dt * 1000)`
     - _Requirements: 6.1, 6.3_
 
-- [~] 3. Implement data models and level definitions
-  - [~] 3.1 Define `LevelData`, `AnchorDef`, `ThreadDef`, `GemDef`, `BasketDef` as plain JS object shapes (JSDoc comments)
+- [-] 3. Implement data models and level definitions
+  - [-] 3.1 Define `LevelData`, `AnchorDef`, `ThreadDef`, `GemDef`, `BasketDef` as plain JS object shapes (JSDoc comments)
     - _Requirements: 13.2_
-  - [~] 3.2 Write at least 5 handcrafted `LevelData` entries in a `LEVELS` array, ordered by ascending `id`
+  - [-] 3.2 Write at least 5 handcrafted `LevelData` entries in a `LEVELS` array, ordered by ascending `id`
     - Each level must have unique id, display name, ≥1 anchor, ≥1 thread, a gem def, and a basket def
     - Vary thread count and layout to create increasing difficulty
     - _Requirements: 13.1, 13.2, 13.3_
