@@ -60,8 +60,8 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
 - [x] 4. Checkpoint — physics complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 5. Implement `LevelManager`
-  - [-] 5.1 Implement `loadLevel(index)`
+- [x] 5. Implement `LevelManager`
+  - [x] 5.1 Implement `loadLevel(index)`
     - Clamp index to `[0, LEVELS.length - 1]`; log warning if out of bounds
     - Deep-clone `LEVELS[index]` into runtime `BallState[]`, `BoltState[]`, `TubeState[]`, `PlatformDef[]`
     - Set every ball `dynamic = false`, `captured = false`, `vx = 0`, `vy = 0`
@@ -70,7 +70,7 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
   - [ ]* 5.2 Write property test for `loadLevel` — Property 1: balls populated correctly
     - **Property 1: loadLevel populates balls correctly**
     - **Validates: Requirements 2.2, 2.3**
-  - [-] 5.3 Implement `hitTestBolt(x, y)`
+  - [x] 5.3 Implement `hitTestBolt(x, y)`
     - Iterate `activeBolts` where `bolt.removed === false`; return first bolt within `TAP_RADIUS`, else `null`
     - No mutations
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
@@ -80,10 +80,10 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
   - [ ]* 5.5 Write property test for `hitTestBolt` — Property 6: returns null when no bolt within TAP_RADIUS
     - **Property 6: hitTestBolt returns null when no bolt is within TAP_RADIUS**
     - **Validates: Requirements 4.2**
-  - [-] 5.6 Implement `unscrewBolt(bolt)`
+  - [x] 5.6 Implement `unscrewBolt(bolt)`
     - Set `bolt.unscrewing = true`, `bolt.animTimer = 0`
     - _Requirements: 5.1_
-  - [-] 5.7 Implement `updateBoltAnimations(dt)`
+  - [x] 5.7 Implement `updateBoltAnimations(dt)`
     - For each unscrewing bolt: increment `animTimer` by `dt`, increment `bolt.angle` by `UNSCREW_SPEED * dt`
     - When `animTimer >= UNSCREW_DURATION`: set `bolt.removed = true`, `bolt.unscrewing = false`, remove from `activeBolts`
     - For each ball held by this bolt: if all holding bolts have `removed === true`, set `ball.dynamic = true`
@@ -94,10 +94,10 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
   - [ ]* 5.9 Write property test for bolt animation — Property 2: ball dynamic only when all bolts removed
     - **Property 2: Ball becomes dynamic only when all holding bolts are removed**
     - **Validates: Requirements 5.5, 5.6**
-  - [-] 5.10 Implement `onBallCaptured(captureEvent)`
+  - [x] 5.10 Implement `onBallCaptured(captureEvent)`
     - Update internal state; call `checkWin()` after each capture
     - _Requirements: 8.1, 8.4_
-  - [-] 5.11 Implement `checkWin()`
+  - [x] 5.11 Implement `checkWin()`
     - Return `true` iff every ball has `captured === true` and `tube.color === ball.color` for its `capturedTubeId`
     - No side effects on ball/tube state
     - When `true`: set `gameState = 'WIN'` if more levels remain, else `gameState = 'GAME_COMPLETE'`
@@ -105,39 +105,39 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
   - [ ]* 5.12 Write property test for `checkWin` — Property 4: win requires all balls captured in matching tubes
     - **Property 4: Win condition requires all balls captured in matching tubes**
     - **Validates: Requirements 8.1, 8.2, 8.3**
-  - [-] 5.13 Implement `checkLoseCondition()`
+  - [x] 5.13 Implement `checkLoseCondition()`
     - If any dynamic non-captured ball has `y > CANVAS_H + ball.radius * 2`, set `gameState = 'LOSE'`
     - _Requirements: 9.1_
 
-- [~] 6. Checkpoint — level manager complete
+- [x] 6. Checkpoint — level manager complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [~] 7. Implement `Renderer`
-  - [~] 7.1 Implement `init(canvas)` — store canvas reference, get 2D context, apply `devicePixelRatio` scaling
+- [-] 7. Implement `Renderer`
+  - [-] 7.1 Implement `init(canvas)` — store canvas reference, get 2D context, apply `devicePixelRatio` scaling
     - _Requirements: 1.2, 10.10_
-  - [~] 7.2 Implement `drawFrame(state)`
+  - [-] 7.2 Implement `drawFrame(state)`
     - Clear canvas; draw in order: background, platforms, tubes, balls, bolts, particles, HUD, overlays
     - Use `ctx.save()` / `ctx.restore()` around each draw call
     - Must not mutate any game state object
     - _Requirements: 10.1, 10.2, 10.8, 10.9_
-  - [~] 7.3 Implement `drawBackground(ctx, w, h)` — fill with light grey/white
+  - [-] 7.3 Implement `drawBackground(ctx, w, h)` — fill with light grey/white
     - _Requirements: 10.2_
-  - [~] 7.4 Implement `drawPlatform(ctx, platform)` — filled rounded rectangle
+  - [-] 7.4 Implement `drawPlatform(ctx, platform)` — filled rounded rectangle
     - _Requirements: 10.2_
-  - [~] 7.5 Implement `drawTube(ctx, tube)` — open-top rectangle with color fill matching `tube.color`
+  - [-] 7.5 Implement `drawTube(ctx, tube)` — open-top rectangle with color fill matching `tube.color`
     - _Requirements: 10.4_
-  - [~] 7.6 Implement `drawBall(ctx, ball)` — circle with radial gradient using `ball.color`
+  - [-] 7.6 Implement `drawBall(ctx, ball)` — circle with radial gradient using `ball.color`
     - _Requirements: 10.3_
-  - [~] 7.7 Implement `drawBolt(ctx, bolt)` — hex-head screw icon; rotate by `bolt.angle` when `bolt.unscrewing`
+  - [-] 7.7 Implement `drawBolt(ctx, bolt)` — hex-head screw icon; rotate by `bolt.angle` when `bolt.unscrewing`
     - _Requirements: 10.5, 10.6_
-  - [~] 7.8 Implement `drawHUD(ctx, levelIndex, canvasW)`
+  - [-] 7.8 Implement `drawHUD(ctx, levelIndex, canvasW)`
     - Draw level number (e.g. "Level 3") and a restart button rectangle with label
     - _Requirements: 10.7_
-  - [~] 7.9 Implement win overlay and lose overlay
+  - [-] 7.9 Implement win overlay and lose overlay
     - Win: "Level Complete!" with next-level button (or "You Win!" if `GAME_COMPLETE`)
     - Lose: "Try Again" overlay with restart button
     - _Requirements: 9.2, 8.5_
-  - [~] 7.10 Implement `spawnParticles(x, y, color, type)` and particle update/draw
+  - [-] 7.10 Implement `spawnParticles(x, y, color, type)` and particle update/draw
     - Spawn burst of ~20 particles with random velocities and `life = 1.0`
     - Each frame: update position by velocity, decrement `life`; remove particles with `life <= 0`
     - Cap particle array at `PARTICLE_CAP = 200`; evict oldest when exceeded
