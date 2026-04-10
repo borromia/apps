@@ -278,6 +278,7 @@
         this.basketBody = null;
         this.anchorBodies = {};
         this.activeThreads = [];
+        this.cutChains = [];
         this.totalThreads = 0;
         this.gameState = 'LOADING';
         this.starRating = null;
@@ -328,43 +329,89 @@
         );
         this.engine.addBody(this.basketBody);
 
-        // Build constraints from ThreadDef entries
+        // Build rope chains from ThreadDef entries.
+        // Each chain is { id, nodes: [Body], links: [Constraint], cutLink: Constraint }
+        // nodes[0] is pinned to the anchor (or is the anchor body itself),
+        // nodes[last] connects to the gem via cutLink.
         this.activeThreads = [];
+        const SEGMENTS = 8; // chain links per rope
         for (const t of level.threads) {
           const resolveBody = (ref) => ref === 'gem' ? this.gemBody : this.anchorBodies[ref];
-          const bodyA = resolveBody(t.from);
-          const bodyB = resolveBody(t.to);
-          const c = Matter.Constraint.create({
-            bodyA,
-            bodyB,
-            length: t.length,
-            stiffness: t.stiffness,
-            label: t.id
-          });
-          this.engine.addConstraint(c);
-          this.activeThreads.push(c);
+          const startBody = resolveBody(t.from);
+          const endBody   = resolveBody(t.to);
+
+          const sx = startBody.position.x, sy = startBody.position.y;
+          const ex = endBody.position.x,   ey = endBody.position.y;
+          const segLen = t.length / SEGMENTS;
+
+          // Create intermediate chain nodes
+          const nodes = [];
+          for (let i = 1; i < SEGMENTS; i++) {
+            const frac = i / SEGMENTS;
+            const nx = sx + (ex - sx) * frac;
+            const ny = sy + (ey - sy) * frac;
+            const node = Matter.Bodies.circle(nx, ny, 3, {
+              label: 'rope_node',
+              collisionFilter: { mask: 0 }, // no collisions with anything
+              frictionAir: 0.05,
+              mass: 0.1,
+            });
+            this.engine.addBody(node);
+            nodes.push(node);
+          }
+
+          // Link: anchor → node[0] → ... → node[last] → gem
+          const links = [];
+          const allNodes = [startBody, ...nodes, endBody];
+          for (let i = 0; i < allNodes.length - 1; i++) {
+            const isLastLink = i === allNodes.length - 2;
+            const c = Matter.Constraint.create({
+              bodyA: allNodes[i],
+              bodyB: allNodes[i + 1],
+              length: segLen,
+              stiffness: isLastLink ? t.stiffness : 0.9,
+              damping: 0.1,
+              label: isLastLink ? t.id + '_cut' : t.id + '_link' + i,
+            });
+            this.engine.addConstraint(c);
+            links.push(c);
+          }
+
+          // The "cut link" is the last constraint (connecting to gem/endBody)
+          const cutLink = links[links.length - 1];
+
+          this.activeThreads.push({ id: t.id, nodes, links, cutLink, startBody, endBody });
         }
 
         this.gameState = 'PLAYING';
         this.starRating = null;
+        this.cutChains = [];
       }
 
       // Task 4.2 — hit test threads at canvas coordinates
+      // threads is now an array of RopeChain objects
       hitTestThread(x, y, threads) {
         if (threads.length === 0) return null;
 
         let closest = null;
         let minDist = 12; // HitThreshold
 
-        for (const thread of threads) {
-          for (let i = 0; i <= 9; i++) {
-            const t = i / 9;
-            const px = thread.bodyA.position.x + (thread.bodyB.position.x - thread.bodyA.position.x) * t;
-            const py = thread.bodyA.position.y + (thread.bodyB.position.y - thread.bodyA.position.y) * t;
-            const dist = Math.sqrt((px - x) * (px - x) + (py - y) * (py - y));
-            if (dist < minDist) {
-              minDist = dist;
-              closest = thread;
+        for (const chain of threads) {
+          // Build the full node list for sampling: startBody + intermediate nodes + endBody
+          const allNodes = [chain.startBody, ...chain.nodes, chain.endBody];
+          for (let i = 0; i < allNodes.length - 1; i++) {
+            const ax = allNodes[i].position.x,   ay = allNodes[i].position.y;
+            const bx = allNodes[i+1].position.x, by = allNodes[i+1].position.y;
+            // Sample 3 points per segment (start, mid, end)
+            for (let s = 0; s <= 2; s++) {
+              const t = s / 2;
+              const px = ax + (bx - ax) * t;
+              const py = ay + (by - ay) * t;
+              const dist = Math.sqrt((px - x) * (px - x) + (py - y) * (py - y));
+              if (dist < minDist) {
+                minDist = dist;
+                closest = chain;
+              }
             }
           }
         }
@@ -372,13 +419,15 @@
         return closest;
       }
 
-      // Task 4.5 — cut a thread
-      cutThread(thread) {
-        this.engine.removeConstraint(thread);
-        const idx = this.activeThreads.indexOf(thread);
+      // Task 4.5 — cut a thread (chain version)
+      // Removes only the final link connecting to the gem; chain nodes fall freely
+      cutThread(chain) {
+        this.engine.removeConstraint(chain.cutLink);
+        const idx = this.activeThreads.indexOf(chain);
         if (idx !== -1) {
           this.activeThreads.splice(idx, 1);
         }
+        this.cutChains.push(chain);
       }
 
       // Task 4.7 — compute star rating (pure)
@@ -422,23 +471,9 @@
         this.particles = [];
         this.restartBtnRect = null;
         this.nextBtnRect = null;
-        // Snapshots of cut threads: { x1, y1, x2, y2 }
-        this.cutRopes = [];
       }
 
-      clearCutRopes() {
-        this.cutRopes = [];
-      }
-
-      // Record a cut thread's last position so it can be drawn as a limp rope
-      recordCutRope(constraint) {
-        this.cutRopes.push({
-          x1: constraint.bodyA.position.x,
-          y1: constraint.bodyA.position.y,
-          x2: constraint.bodyB.position.x,
-          y2: constraint.bodyB.position.y,
-        });
-      }
+      clearCutRopes() { /* no-op, kept for call-site compatibility */ }
 
       // Task 6.1 — init and drawFrame
       init(canvas) {
@@ -448,7 +483,7 @@
 
       drawFrame(state) {
         const ctx = this.ctx;
-        const { gameState, currentLevel, gemBody, basketBody, anchorBodies, activeThreads, starRating, currentIndex, dt } = state;
+        const { gameState, currentLevel, gemBody, basketBody, anchorBodies, activeThreads, cutChains, starRating, currentIndex, dt } = state;
 
         ctx.clearRect(0, 0, LOGICAL_W, LOGICAL_H);
         ctx.fillStyle = '#0d0d14';
@@ -458,13 +493,16 @@
 
         this.drawAnchors(ctx, anchorBodies);
 
-        // Draw cut rope remnants (faded, grey) before active threads
-        for (const rope of this.cutRopes) {
-          this.drawRopeSegment(ctx, rope.x1, rope.y1, rope.x2, rope.y2, 0.35, true);
+        // Draw cut chains (physics-simulated, faded)
+        if (cutChains) {
+          for (const chain of cutChains) {
+            this.drawChain(ctx, chain, 0.4, true);
+          }
         }
 
-        for (const thread of activeThreads) {
-          this.drawThread(ctx, thread);
+        // Draw active threads
+        for (const chain of activeThreads) {
+          this.drawChain(ctx, chain, 1.0, false);
         }
 
         this.drawBasket(ctx, basketBody, currentLevel.basket);
@@ -480,11 +518,14 @@
         if (gameState === 'GAME_COMPLETE') this.drawGameCompleteOverlay(ctx);
       }
 
-      // Task 6.2 — drawThread (rope style)
-      drawThread(ctx, constraint, alpha = 1) {
-        const ax = constraint.bodyA.position.x, ay = constraint.bodyA.position.y;
-        const bx = constraint.bodyB.position.x, by = constraint.bodyB.position.y;
-        this.drawRopeSegment(ctx, ax, ay, bx, by, alpha, false);
+      // Draw a rope chain by connecting its nodes with rope-style strokes
+      drawChain(ctx, chain, alpha, cut) {
+        const allNodes = [chain.startBody, ...chain.nodes, chain.endBody];
+        for (let i = 0; i < allNodes.length - 1; i++) {
+          const ax = allNodes[i].position.x,   ay = allNodes[i].position.y;
+          const bx = allNodes[i+1].position.x, by = allNodes[i+1].position.y;
+          this.drawRopeSegment(ctx, ax, ay, bx, by, alpha, cut);
+        }
       }
 
       // Shared rope drawing: thick braided look with a highlight stripe
@@ -806,9 +847,8 @@
       if (levelManager.gameState !== 'PLAYING') return;
       const thread = levelManager.hitTestThread(x, y, levelManager.activeThreads);
       if (thread) {
-        const mx = (thread.bodyA.position.x + thread.bodyB.position.x) / 2;
-        const my = (thread.bodyA.position.y + thread.bodyB.position.y) / 2;
-        renderer.recordCutRope(thread);
+        const mx = (thread.startBody.position.x + thread.endBody.position.x) / 2;
+        const my = (thread.startBody.position.y + thread.endBody.position.y) / 2;
         levelManager.cutThread(thread);
         renderer.spawnParticles(mx, my, 'cut');
       }
@@ -844,6 +884,7 @@
         basketBody:   levelManager.basketBody,
         anchorBodies: levelManager.anchorBodies,
         activeThreads: levelManager.activeThreads,
+        cutChains:    levelManager.cutChains,
         starRating:   levelManager.starRating,
         currentIndex: levelManager.currentIndex,
         dt
