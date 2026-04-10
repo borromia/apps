@@ -1462,17 +1462,21 @@ async function trashCurrentFolder() {
 
     await removeDir(srcParent, currentDirHandle.name);
 
-    // Invalidate search cache and refresh tree
+    // Invalidate search cache
     allEntries = null;
-    treeEl.innerHTML = '';
-    await buildTree(treeEl, rootHandle, 0);
+
+    // Surgically remove just the deleted row + its child container from the tree
+    // (preserves scroll position — no full rebuild)
+    const deletedRow = treeEl.querySelector(`[data-path="${CSS.escape(currentDirPath)}"]`);
+    if (deletedRow) {
+      const next = deletedRow.nextElementSibling;
+      if (next && next.classList.contains('tree-children')) next.remove();
+      deletedRow.remove();
+    }
 
     // Navigate to next sibling or clear
     if (nextName) {
-      const nextHandle = await srcParent.getDirectoryHandle(nextName);
-      const parentPath = pathParts.slice(0, -1).join('/');
       const nextPath = parentPath ? `${parentPath}/${nextName}` : nextName;
-      // Re-expand the tree to the next sibling
       await expandTreePath(nextPath, true);
     } else {
       clearContent();
