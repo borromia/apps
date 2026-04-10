@@ -1,0 +1,1765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Comic Reader</title>
+<script src="https://unpkg.com/idb-keyval@6/dist/umd.js"></script>
+<script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #1a1a1e;
+    --surface: rgba(40, 40, 46, 0.75);
+    --surface-solid: #28282e;
+    --border: rgba(255,255,255,0.08);
+    --accent: #0a84ff;
+    --text: #f0f0f5;
+    --text-muted: #8e8e9a;
+    --topbar-h: 52px;
+    --sidebar-w: 260px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+    font-size: 13px;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    height: var(--topbar-h);
+    min-height: var(--topbar-h);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 16px;
+    background: rgba(28,28,32,0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+  }
+
+  #topbar .logo {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text);
+    margin-right: 6px;
+    white-space: nowrap;
+  }
+
+  .tb-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .tb-btn:hover { background: rgba(255,255,255,0.12); }
+  .tb-btn svg { flex-shrink: 0; }
+
+  .tb-sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+  .tb-spacer { flex: 1; }
+
+  .mode-group { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+  .mode-btn {
+    padding: 5px 12px;
+    background: rgba(255,255,255,0.04);
+    color: var(--text-muted);
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex; align-items: center; gap: 5px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .mode-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+  .mode-btn.active { background: var(--accent); color: #fff; }
+
+  /* ── BODY ── */
+  #body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: var(--sidebar-w);
+    background: rgba(24,24,28,0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  #sidebar-header {
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  #btn-sort {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 7px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    transition: background 0.15s, color 0.15s;
+  }
+  #btn-sort:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+  #btn-sort.active { background: rgba(10,132,255,0.2); color: var(--accent); border-color: rgba(10,132,255,0.3); }
+
+  /* ── SEARCH ── */
+  #search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    color: var(--text-muted);
+  }
+  #tree-search {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 12px;
+    font-family: inherit;
+  }
+  #tree-search::placeholder { color: var(--text-muted); opacity: 0.6; }
+  #tree-search-clear {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 4px;
+    line-height: 0;
+  }
+  #tree-search-clear:hover { color: var(--text); }
+  #tree-search-clear.visible { display: flex; }
+
+  .search-result {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    margin: 1px 6px;
+    color: var(--text-muted);
+    transition: background 0.1s, color 0.1s;
+    user-select: none;
+  }
+  .search-result:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+  .search-result .sr-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .search-result .sr-path { font-size: 10px; opacity: 0.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; max-width: 90px; }
+  .search-result mark { background: rgba(10,132,255,0.35); color: var(--text); border-radius: 2px; padding: 0 1px; }
+  #search-empty { padding: 14px 12px; font-size: 12px; color: var(--text-muted); }
+
+  #tree {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+  }
+
+  #tree::-webkit-scrollbar { width: 4px; }
+  #tree::-webkit-scrollbar-track { background: transparent; }
+  #tree::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
+  .tree-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    margin: 1px 6px;
+    color: var(--text-muted);
+    transition: background 0.1s, color 0.1s;
+    user-select: none;
+  }
+  .tree-item:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+  .tree-item.active { background: rgba(10,132,255,0.2); color: var(--accent); }
+  .tree-item .icon { flex-shrink: 0; opacity: 0.7; }
+  .tree-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tree-item .chevron {
+    flex-shrink: 0;
+    transition: transform 0.15s;
+    opacity: 0.5;
+  }
+  .tree-item.open .chevron { transform: rotate(90deg); }
+
+  .tree-children { padding-left: 16px; }
+
+  .tree-count {
+    font-size: 10px;
+    color: var(--text-muted);
+    opacity: 0.6;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* ── CONTENT ── */
+  #content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    background: var(--bg);
+  }
+
+  #content::-webkit-scrollbar { width: 6px; }
+  #content::-webkit-scrollbar-track { background: transparent; }
+  #content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+  #empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 12px;
+    color: var(--text-muted);
+  }
+  #empty-state svg { opacity: 0.3; }
+  #empty-state p { font-size: 14px; }
+
+  /* tile view */
+  #image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(calc(var(--zoom, 1) * 180px), 1fr));
+    gap: 10px;
+  }
+
+  .tile {
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    aspect-ratio: 3/4;
+    position: relative;
+  }
+  .tile:hover { transform: scale(1.03); box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+  .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile .pdf-icon {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; color: var(--text-muted);
+  }
+  .tile .pdf-icon svg { opacity: 0.5; }
+  .tile .pdf-icon span { font-size: 11px; opacity: 0.5; text-align: center; padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+
+  /* tile tooltip */
+  #tile-tooltip {
+    position: fixed;
+    z-index: 500;
+    pointer-events: none;
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(28,28,34,0.82);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    max-width: 320px;
+  }
+  #tile-tooltip.visible { display: flex; }
+  #tile-tooltip .tt-row { display: flex; justify-content: space-between; gap: 16px; }
+  #tile-tooltip .tt-row.tt-wrap { flex-direction: column; gap: 2px; white-space: normal; word-break: break-all; }
+  #tile-tooltip .tt-label { opacity: 0.6; flex-shrink: 0; }
+  #tile-tooltip .tt-val { color: var(--text); font-variant-numeric: tabular-nums; }
+
+  /* comic view */
+  #comic-strip { display: flex; flex-direction: column; gap: 0; align-items: center; }
+  #comic-strip img, #comic-strip video {
+    width: 100%;
+    max-width: calc(var(--zoom, 1) * 900px);
+    display: block;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface-solid);
+  }
+  #comic-strip video { aspect-ratio: 16/9; }
+  #comic-strip .pdf-embed {
+    width: 100%;
+    max-width: calc(var(--zoom, 1) * 900px);
+    height: calc(var(--zoom, 1) * 1200px);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface-solid);
+    display: block;
+  }
+  .page-sep {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    max-width: calc(var(--zoom, 1) * 900px);
+    padding: 14px 0;
+    color: var(--text-muted);
+    font-size: 11px;
+    letter-spacing: 0.4px;
+    user-select: none;
+  }
+  .page-sep::before, .page-sep::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* fullscreen */
+  :fullscreen #topbar { display: flex; }
+  :fullscreen body { height: 100vh; }
+
+  #current-path {
+    font-size: 11px;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 300px;
+  }
+
+  /* ── ZOOM SLIDER ── */
+  .zoom-control {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--text-muted);
+  }
+  .zoom-control svg { flex-shrink: 0; }
+  #zoom-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 90px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.15);
+    outline: none;
+    cursor: pointer;
+  }
+  #zoom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  #zoom-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+  /* ── INFO PANEL ── */
+  #info-panel {
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    background: rgba(40,40,46,0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    flex-shrink: 0;
+  }
+  #info-panel .info-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.2px;
+  }
+  #info-panel .info-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: -6px;
+  }
+  #info-panel .info-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .tags-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 22px;
+  }
+  .tag {
+    padding: 3px 9px;
+    border-radius: 20px;
+    background: rgba(10,132,255,0.15);
+    border: 1px solid rgba(10,132,255,0.3);
+    color: var(--accent);
+    font-size: 11px;
+  }
+  .tag-placeholder {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+  .info-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #btn-ocr {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.15s;
+  }
+  #btn-ocr:hover:not(:disabled) { background: rgba(255,255,255,0.12); }
+  #btn-ocr:disabled { opacity: 0.5; cursor: not-allowed; }
+  #btn-trash {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,80,80,0.25);
+    background: rgba(255,60,60,0.08);
+    color: #ff6b6b;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.15s;
+    margin-left: auto;
+  }
+  #btn-trash:hover:not(:disabled) { background: rgba(255,60,60,0.18); }
+  #btn-trash:disabled { opacity: 0.4; cursor: not-allowed; }
+  #btn-trash kbd {
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,80,80,0.3);
+    background: rgba(255,60,60,0.12);
+    font-family: inherit;
+  }  #ocr-progress {
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+  }
+  #ocr-progress-bar-wrap {
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.1);
+    overflow: hidden;
+  }
+  #ocr-progress-bar {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.2s;
+  }
+  #ocr-status {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* ── CONTENT WRAPPER ── */
+  #content-inner {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+  #resizer {
+    width: 5px;
+    min-width: 5px;
+    cursor: col-resize;
+    background: transparent;
+    position: relative;
+    z-index: 10;
+    transition: background 0.15s;
+  }
+  #resizer:hover, #resizer.dragging { background: var(--accent); }
+  #resizer::after {
+    content: '';
+    position: absolute;
+    inset: 0 -4px;
+  }
+
+  /* ── LIGHTBOX ── */
+  #lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    animation: lb-in 0.18s ease;
+  }
+  #lightbox.open { display: flex; }
+  @keyframes lb-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  #lightbox-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  #lightbox img {
+    max-width: min(85vw, 1200px);
+    max-height: 85vh;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 32px 80px rgba(0,0,0,0.7);
+    object-fit: contain;
+    animation: lb-scale 0.18s ease;
+  }
+  @keyframes lb-scale {
+    from { transform: scale(0.93); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+  }
+  #lightbox-page {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.4px;
+    user-select: none;
+  }
+  .lb-nav-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(40,40,46,0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s, opacity 0.15s;
+  }
+  .lb-nav-btn:hover { background: rgba(255,255,255,0.15); }
+  .lb-nav-btn:disabled { opacity: 0.2; cursor: default; }
+  #lightbox-close {
+    position: fixed;
+    top: 18px;
+    right: 22px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(40,40,46,0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+  #lightbox-close:hover { background: rgba(255,255,255,0.15); }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <span class="logo">📖 Comic Reader</span>
+  <div class="tb-sep"></div>
+
+  <button class="tb-btn" id="btn-open">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+    Open Folder
+  </button>
+
+  <span id="current-path"></span>
+
+  <div class="tb-spacer"></div>
+
+  <div class="zoom-control">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+    <input type="range" id="zoom-slider" min="50" max="300" value="100" step="10" title="Zoom" />
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+  </div>
+
+  <div class="tb-sep"></div>
+
+  <div class="zoom-control">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    <input type="range" id="speed-slider" min="0.5" max="5" value="1" step="0.25" title="Video speed" />
+    <span id="speed-label" style="font-size:11px;color:var(--text-muted);min-width:28px;">1×</span>
+  </div>
+
+  <div class="tb-sep"></div>
+
+  <div class="mode-group">
+    <button class="mode-btn active" id="btn-tile" title="Tile view">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
+      Tiles
+    </button>
+    <button class="mode-btn" id="btn-comic" title="Comic view">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="5" rx="1"/><rect x="3" y="10" width="18" height="5" rx="1"/><rect x="3" y="17" width="18" height="4" rx="1"/></svg>
+      Comic
+    </button>
+  </div>
+
+  <div class="tb-sep"></div>
+
+  <button class="tb-btn" id="btn-fs" title="Fullscreen">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+  </button>
+</div>
+
+<!-- BODY -->
+<div id="body">
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <span>Explorer</span>
+      <button id="btn-sort" title="Sort by item count">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
+        by count
+      </button>
+    </div>
+    <div id="search-wrap">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="tree-search" type="text" placeholder="Search…" autocomplete="off" spellcheck="false" />
+      <button id="tree-search-clear" aria-label="Clear">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="tree">
+      <div id="empty-tree" style="padding:16px 12px;color:var(--text-muted);font-size:12px;">
+        Open a folder to begin
+      </div>
+    </div>
+  </div>
+
+  <!-- RESIZER -->
+  <div id="resizer"></div>
+
+  <!-- CONTENT -->
+  <div id="content">
+    <div id="content-inner">
+      <!-- INFO PANEL -->
+      <div id="info-panel">
+        <div class="info-title" id="info-title">—</div>
+        <div class="info-subtitle" id="info-subtitle"></div>
+        <div class="info-meta" id="info-meta"></div>
+        <div class="tags-row" id="tags-row">
+          <span class="tag-placeholder">No tags yet — run extraction to generate</span>
+        </div>
+        <div id="ocr-progress">
+          <div id="ocr-status">Initialising…</div>
+          <div id="ocr-progress-bar-wrap"><div id="ocr-progress-bar"></div></div>
+        </div>
+        <div class="info-actions">
+          <button id="btn-ocr">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>
+            Extract text &amp; tag
+          </button>
+          <button id="btn-trash">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            Move to Trash <kbd>⌫</kbd>
+          </button>
+        </div>
+      </div>
+
+      <div id="empty-state">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <p>Select a folder to view images</p>
+      </div>
+      <div id="image-grid" style="display:none"></div>
+      <div id="comic-strip" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<div id="tile-tooltip"></div>
+
+<div id="lightbox">
+  <button id="lightbox-close" aria-label="Close">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+  <button id="lightbox-prev" class="lb-nav-btn" aria-label="Previous">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  <div id="lightbox-body">
+    <img id="lightbox-img" src="" alt="" />
+    <video id="lightbox-vid" controls loop autoplay muted playsinline style="display:none;max-width:min(90vw,1200px);max-height:85vh;border-radius:12px;border:1px solid rgba(255,255,255,0.12);box-shadow:0 32px 80px rgba(0,0,0,0.7);"></video>
+    <iframe id="lightbox-pdf" src="" style="display:none;width:min(90vw,1000px);height:88vh;border-radius:12px;border:1px solid rgba(255,255,255,0.12);box-shadow:0 32px 80px rgba(0,0,0,0.7);" title="PDF"></iframe>
+    <div id="lightbox-page"></div>
+  </div>
+  <button id="lightbox-next" class="lb-nav-btn" aria-label="Next">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+</div>
+
+<script>
+const { get, set } = idbKeyval;
+
+let rootHandle = null;
+let mode = 'tile'; // 'tile' | 'comic'
+let currentFileHandles = []; // FileSystemFileHandle[] for current view
+let currentMediaEls = [];   // parallel DOM elements (tile div or strip img/video/iframe)
+let sortByCount = new URL(location.href).searchParams.get('sort') === 'count';
+
+const btnOpen   = document.getElementById('btn-open');
+const btnTile   = document.getElementById('btn-tile');
+const btnComic  = document.getElementById('btn-comic');
+const btnFs     = document.getElementById('btn-fs');
+const btnSort   = document.getElementById('btn-sort');
+const treeEl    = document.getElementById('tree');
+const emptyTree = document.getElementById('empty-tree');
+const grid      = document.getElementById('image-grid');
+const strip     = document.getElementById('comic-strip');
+const emptyState= document.getElementById('empty-state');
+const pathLabel = document.getElementById('current-path');
+
+// ── INFO PANEL ────────────────────────────────────────────────────────────────
+const infoPanel    = document.getElementById('info-panel');
+const infoTitle    = document.getElementById('info-title');
+const infoSubtitle = document.getElementById('info-subtitle');
+const infoMeta     = document.getElementById('info-meta');
+const tagsRow      = document.getElementById('tags-row');
+const btnOcr       = document.getElementById('btn-ocr');
+const ocrProgress  = document.getElementById('ocr-progress');
+const ocrBar       = document.getElementById('ocr-progress-bar');
+const ocrStatus    = document.getElementById('ocr-status');
+
+let currentDirName = '';
+let currentDirHandle = null;
+let currentDirPath = ''; // relative path from rootHandle, e.g. "manga/One Piece"
+
+// Tag keyword map: category → keywords to look for in OCR text
+const TAG_KEYWORDS = {
+  'action':     ['fight','battle','punch','kick','attack','sword','gun','shoot','explosion','war'],
+  'romance':    ['love','kiss','heart','darling','marry','wedding','date','boyfriend','girlfriend'],
+  'comedy':     ['haha','lol','funny','joke','laugh','silly','prank','humor'],
+  'horror':     ['blood','kill','dead','monster','ghost','scream','fear','terror','zombie'],
+  'fantasy':    ['magic','wizard','dragon','spell','kingdom','elf','dwarf','quest','potion'],
+  'sci-fi':     ['robot','space','alien','planet','laser','cyber','android','galaxy','future'],
+  'slice-of-life': ['school','family','friend','home','work','daily','morning','lunch','dinner'],
+  'adventure':  ['journey','explore','treasure','map','island','cave','dungeon','hero'],
+  'anal':      ['anal','backhole','butthole', 'asshole'],
+};
+
+function deriveTagsFromText(text) {
+  const lower = text.toLowerCase();
+  const found = [];
+  for (const [tag, keywords] of Object.entries(TAG_KEYWORDS)) {
+    if (keywords.some(kw => lower.includes(kw))) found.push(tag);
+  }
+  return found;
+}
+
+function renderTags(tags) {
+  tagsRow.innerHTML = '';
+  if (!tags || tags.length === 0) {
+    tagsRow.innerHTML = '<span class="tag-placeholder">No tags detected</span>';
+    return;
+  }
+  tags.forEach(t => {
+    const el = document.createElement('span');
+    el.className = 'tag';
+    el.textContent = t;
+    tagsRow.appendChild(el);
+  });
+}
+
+function showInfoPanel(dirName, fileCount, totalSize, tags, dirPath = '') {
+  currentDirName = dirName;
+  infoTitle.textContent = dirName;
+  const parts = dirPath.split('/').filter(Boolean);
+  const parent = parts.length > 1 ? parts[parts.length - 2] : parts.length === 1 ? '/' : '';
+  infoSubtitle.textContent = parent ? `in ${parent}` : '';
+  infoMeta.textContent = `${fileCount} image${fileCount !== 1 ? 's' : ''}  ·  ${formatBytes(totalSize)}`;
+  renderTags(tags);
+  infoPanel.style.display = 'flex';
+}
+
+// Load saved tags from idb
+async function loadSavedTags(key) {
+  return await get('tags:' + key) || null;
+}
+async function saveTags(key, tags) {
+  await set('tags:' + key, tags);
+}
+
+// ── OCR ───────────────────────────────────────────────────────────────────────
+btnOcr.addEventListener('click', async () => {
+  if (!currentFileHandles.length) return;
+  btnOcr.disabled = true;
+  ocrProgress.style.display = 'flex';
+  ocrBar.style.width = '0%';
+  ocrStatus.textContent = 'Loading OCR engine…';
+
+  try {
+    const worker = await Tesseract.createWorker('eng', 1, {
+      logger: () => {}
+    });
+
+    let allText = '';
+    const total = currentFileHandles.length;
+
+    for (let i = 0; i < total; i++) {
+      ocrStatus.textContent = `Reading page ${i + 1} / ${total}…`;
+      ocrBar.style.width = `${Math.round((i / total) * 100)}%`;
+
+      const file = await currentFileHandles[i].getFile();
+      const url = URL.createObjectURL(file);
+      try {
+        const { data: { text } } = await worker.recognize(url);
+        allText += ' ' + text;
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+
+    await worker.terminate();
+
+    const tags = deriveTagsFromText(allText);
+    await saveTags(currentDirName, tags);
+    renderTags(tags);
+
+    ocrBar.style.width = '100%';
+    ocrStatus.textContent = `Done — ${tags.length} tag${tags.length !== 1 ? 's' : ''} found`;
+    setTimeout(() => { ocrProgress.style.display = 'none'; }, 2500);
+  } catch (err) {
+    ocrStatus.textContent = 'OCR failed: ' + err.message;
+    console.error(err);
+  } finally {
+    btnOcr.disabled = false;
+  }
+});
+
+// ── URL STATE ─────────────────────────────────────────────────────────────────
+function setUrlParam(path) {
+  const url = new URL(location.href);
+  if (path) url.searchParams.set('comic', path);
+  else url.searchParams.delete('comic');
+  if (sortByCount) url.searchParams.set('sort', 'count');
+  else url.searchParams.delete('sort');
+  history.replaceState(null, '', url);
+}
+
+function getUrlParam() {
+  return new URL(location.href).searchParams.get('comic') || '';
+}
+
+// Expand the tree to a given path, optionally loading the final folder.
+// Each ancestor is expanded (children revealed + subtree built) without triggering a load.
+async function expandTreePath(targetPath, andLoad = true) {
+  const parts = targetPath.split('/').filter(Boolean);
+  let builtPath = '';
+  for (let i = 0; i < parts.length; i++) {
+    builtPath = builtPath ? `${builtPath}/${parts[i]}` : parts[i];
+    const isLast = i === parts.length - 1;
+    const row = treeEl.querySelector(`[data-path="${CSS.escape(builtPath)}"]`);
+    if (!row) break;
+    // expand without loading for ancestors; load only for the final segment
+    await row._expand(isLast && andLoad);
+  }
+}
+
+// Navigate rootHandle to a path string, returning the dir handle (or null)
+async function resolvePath(root, pathStr) {
+  try {
+    let cur = root;
+    for (const part of pathStr.split('/').filter(Boolean)) {
+      cur = await cur.getDirectoryHandle(part);
+    }
+    return cur;
+  } catch { return null; }
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+(async () => {
+  const saved = await get('comicReaderDir');
+  if (saved) {
+    const perm = await saved.queryPermission({ mode: 'read' });
+    if (perm === 'granted') {
+      rootHandle = saved;
+      pathLabel.textContent = saved.name;
+      await buildTree(treeEl, saved, 0);
+      emptyTree.style.display = 'none';
+
+      // Restore last open comic from URL
+      const savedPath = getUrlParam();
+      if (savedPath) await expandTreePath(savedPath);
+    }
+  }
+})();
+
+// ── OPEN FOLDER ───────────────────────────────────────────────────────────────
+btnOpen.addEventListener('click', async () => {
+  try {
+    const handle = await window.showDirectoryPicker({ mode: 'read' });
+    rootHandle = handle;
+    await set('comicReaderDir', handle);
+    pathLabel.textContent = handle.name;
+    treeEl.innerHTML = '';
+    emptyTree.style.display = 'none';
+    allEntries = null;
+    searchInput.value = '';
+    searchClear.classList.remove('visible');
+    await buildTree(treeEl, handle, 0);
+    clearContent();
+  } catch (e) {
+    if (e.name !== 'AbortError') console.error(e);
+  }
+});
+
+// ── SORT TOGGLE ───────────────────────────────────────────────────────────────
+btnSort.classList.toggle('active', sortByCount); // reflect initial state from URL
+btnSort.addEventListener('click', async () => {
+  sortByCount = !sortByCount;
+  btnSort.classList.toggle('active', sortByCount);
+  setUrlParam(currentDirPath);
+  if (rootHandle) {
+    treeEl.innerHTML = '';
+    await buildTree(treeEl, rootHandle, 0);
+    if (currentDirPath) await expandTreePath(currentDirPath, false);
+  }
+});
+
+// ── TREE SEARCH ───────────────────────────────────────────────────────────────
+const searchInput = document.getElementById('tree-search');
+const searchClear = document.getElementById('tree-search-clear');
+
+// Recursively collect all entries with their path
+async function collectAll(dirHandle, path = '') {
+  const results = [];
+  for await (const entry of dirHandle.values()) {
+    if (entry.kind !== 'directory') continue;
+    const entryPath = path ? `${path}/${entry.name}` : entry.name;
+    results.push({ entry, path: entryPath, parentPath: path });
+    const children = await collectAll(entry, entryPath);
+    results.push(...children);
+  }
+  return results;
+}
+
+function highlight(name, query) {
+  const idx = name.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return name;
+  return name.slice(0, idx)
+    + `<mark>${name.slice(idx, idx + query.length)}</mark>`
+    + name.slice(idx + query.length);
+}
+
+let allEntries = null; // cached flat list
+
+async function runSearch(query) {
+  treeEl.innerHTML = '';
+  if (!query) {
+    allEntries = null;
+    await buildTree(treeEl, rootHandle, 0);
+    return;
+  }
+
+  if (!allEntries) allEntries = await collectAll(rootHandle);
+
+  const q = query.toLowerCase();
+  const matches = allEntries.filter(({ entry }) => entry.name.toLowerCase().includes(q));
+
+  if (!matches.length) {
+    treeEl.innerHTML = '<div id="search-empty">No results</div>';
+    return;
+  }
+
+  for (const { entry, path, parentPath } of matches) {
+    const row = document.createElement('div');
+    row.className = 'search-result';
+
+    const iconSvg = `<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
+    row.innerHTML = `${iconSvg}<span class="sr-name">${highlight(entry.name, query)}</span><span class="sr-path" title="${parentPath}">${parentPath || '/'}</span>`;
+
+    row.addEventListener('click', async () => {
+      document.querySelectorAll('.search-result').forEach(r => r.classList.remove('active'));
+      row.classList.add('active');
+      await loadFolderImages(entry, row, path);
+    });
+
+    treeEl.appendChild(row);
+  }
+}
+
+let searchDebounce;
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim();
+  searchClear.classList.toggle('visible', q.length > 0);
+  // invalidate cache when query changes so new folder opens refresh it
+  if (!q) allEntries = null;
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => {
+    if (rootHandle) runSearch(q);
+  }, 200);
+});
+
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchClear.classList.remove('visible');
+  allEntries = null;
+  if (rootHandle) runSearch('');
+  searchInput.focus();
+});
+
+// invalidate cache when a new folder is opened
+// ── MODE SWITCH ───────────────────────────────────────────────────────────────
+btnTile.addEventListener('click', () => setMode('tile'));
+btnComic.addEventListener('click', () => setMode('comic'));
+
+async function setMode(m) {
+  mode = m;
+  btnTile.classList.toggle('active', m === 'tile');
+  btnComic.classList.toggle('active', m === 'comic');
+  if (currentFileHandles.length) await renderFromHandles(currentFileHandles);
+}
+
+// ── FULLSCREEN ────────────────────────────────────────────────────────────────
+btnFs.addEventListener('click', () => {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+});
+
+// ── TREE ──────────────────────────────────────────────────────────────────────
+const IMAGE_EXT = /\.(jpe?g|png|gif|webp|avif|bmp)$/i;
+const VIDEO_EXT = /\.(mp4|webm|mov|mkv|avi)$/i;
+const PDF_EXT   = /\.pdf$/i;
+const MEDIA_EXT = new RegExp(`${IMAGE_EXT.source}|${VIDEO_EXT.source}|${PDF_EXT.source}`, 'i');
+
+async function buildTree(container, dirHandle, depth, parentPath = '') {
+  const entries = [];
+  for await (const entry of dirHandle.values()) entries.push(entry);
+
+  // count children for all directories (needed for both display and optional sort)
+  const countMap = new Map();
+  await Promise.all(entries.filter(e => e.kind === 'directory').map(async e => {
+    let n = 0;
+    for await (const _ of e.values()) n++;
+    countMap.set(e.name, n);
+  }));
+
+  entries.sort((a, b) => {
+    if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
+    if (sortByCount && a.kind === 'directory') {
+      return (countMap.get(b.name) ?? 0) - (countMap.get(a.name) ?? 0);
+    }
+    return a.name.localeCompare(b.name, undefined, { numeric: true });
+  });
+
+  for (const entry of entries) {
+    const row = document.createElement('div');
+    row.className = 'tree-item';
+    row.style.paddingLeft = `${12 + depth * 14}px`;
+
+    if (entry.kind === 'directory') {
+      const childCount = countMap.get(entry.name) ?? 0;
+      const entryPath = parentPath ? `${parentPath}/${entry.name}` : entry.name;
+
+      row.dataset.path = entryPath;
+      row.innerHTML = `
+        <svg class="icon chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span class="name">${entry.name}</span>
+        <span class="tree-count">${childCount}</span>`;
+
+      const childContainer = document.createElement('div');
+      childContainer.className = 'tree-children';
+      childContainer.style.display = 'none';
+      let loaded = false;
+
+      const expand = async (andLoad = true) => {
+        const isOpen = childContainer.style.display !== 'none';
+        if (!isOpen) {
+          childContainer.style.display = 'block';
+          row.classList.add('open');
+        }
+        if (!loaded) {
+          loaded = true;
+          await buildTree(childContainer, entry, depth + 1, entryPath);
+        }
+        if (andLoad) await loadFolderImages(entry, row, entryPath);
+      };
+
+      // expose expand on the row element for programmatic use
+      row._expand = expand;
+
+      row.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const isOpen = childContainer.style.display !== 'none';
+        if (isOpen) {
+          childContainer.style.display = 'none';
+          row.classList.remove('open');
+          await loadFolderImages(entry, row, entryPath);
+        } else {
+          await expand(true);
+        }
+      });
+
+      container.appendChild(row);
+      container.appendChild(childContainer);
+    } else if (MEDIA_EXT.test(entry.name)) {
+      row.innerHTML = `
+        <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <span class="name">${entry.name}</span>`;
+      row.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        setActiveRow(row);
+        await renderFromHandles([entry]);
+      });
+      container.appendChild(row);
+    }
+  }
+}
+
+async function loadFolderImages(dirHandle, row, dirPath = '') {
+  if (row) setActiveRow(row);
+  const fileHandles = [];
+  const entries = [];
+  for await (const entry of dirHandle.values()) entries.push(entry);
+  entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  for (const entry of entries) {
+    if (entry.kind === 'file' && MEDIA_EXT.test(entry.name)) fileHandles.push(entry);
+  }
+
+  // sum file sizes
+  let totalSize = 0;
+  await Promise.all(fileHandles.map(async h => {
+    const f = await h.getFile();
+    totalSize += f.size;
+  }));
+
+  currentDirHandle = dirHandle;
+  currentDirPath = dirPath;
+  setUrlParam(dirPath);
+  const savedTags = await loadSavedTags(dirHandle.name);
+  showInfoPanel(dirHandle.name, fileHandles.length, totalSize, savedTags, dirPath);
+
+  if (fileHandles.length) await renderFromHandles(fileHandles);
+  else clearContent();
+}
+
+function setActiveRow(row) {
+  document.querySelectorAll('.tree-item.active').forEach(r => r.classList.remove('active'));
+  row.classList.add('active');
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+async function renderFromHandles(fileHandles) {
+  currentFileHandles = fileHandles;
+  currentMediaEls = [];
+  emptyState.style.display = 'none';
+
+  // revoke old blobs
+  [...grid.querySelectorAll('img,video'), ...strip.querySelectorAll('img,video,iframe')]
+    .forEach(el => { if (el.src && el.src.startsWith('blob:')) URL.revokeObjectURL(el.src); });
+
+  grid.innerHTML = '';
+  strip.innerHTML = '';
+
+  // create fresh blobs with type info
+  const items = await Promise.all(fileHandles.map(async h => {
+    const file = await h.getFile();
+    const url = URL.createObjectURL(file);
+    const name = h.name;
+    const type = VIDEO_EXT.test(name) ? 'video' : PDF_EXT.test(name) ? 'pdf' : 'image';
+    return { url, type, name, handle: h };
+  }));
+
+  if (mode === 'tile') {
+    grid.style.display = 'grid';
+    strip.style.display = 'none';
+
+    // collect image-only urls for lightbox (skip video/pdf)
+    const imageItems = items.filter(it => it.type === 'image');
+    const imageUrls  = imageItems.map(it => it.url);
+
+    for (let i = 0; i < items.length; i++) {
+      const { url, type, name, handle } = items[i];
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+
+      if (type === 'video') {
+        const vid = document.createElement('video');
+        vid.src = url;
+        vid.autoplay = true;
+        vid.loop = true;
+        vid.muted = true;
+        vid.playsInline = true;
+        vid.playbackRate = videoSpeed;
+        vid.style.pointerEvents = 'none';
+        tile.appendChild(vid);
+        tile.addEventListener('click', () => {
+          const idx = items.findIndex(it => it.handle === handle);
+          if (idx !== -1) openLightbox(items, idx);
+        });
+      } else if (type === 'pdf') {
+        const icon = document.createElement('div');
+        icon.className = 'pdf-icon';
+        icon.innerHTML = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg><span>${name}</span>`;
+        tile.appendChild(icon);
+        tile.addEventListener('click', () => {
+          const idx = items.findIndex(it => it.handle === handle);
+          if (idx !== -1) openLightbox(items, idx);
+        });
+      } else {
+        const img = document.createElement('img');
+        img.src = url;
+        img.loading = 'lazy';
+        img.alt = '';
+        tile.appendChild(img);
+        tile.addEventListener('click', () => {
+          const idx = items.findIndex(it => it.handle === handle);
+          if (idx !== -1) openLightbox(items, idx);
+        });
+        attachTileTooltip(tile, img, handle, i + 1, items.length);
+      }
+
+      grid.appendChild(tile);
+      currentMediaEls.push(tile);
+    }
+  } else {
+    grid.style.display = 'none';
+    strip.style.display = 'flex';
+    const total = items.length;
+
+    items.forEach(({ url, type, name }, i) => {
+      const sep = document.createElement('div');
+      sep.className = 'page-sep';
+      sep.textContent = `Page ${i + 1} / ${total}`;
+      strip.appendChild(sep);
+
+      let el;
+      if (type === 'video') {
+        el = document.createElement('video');
+        el.src = url;
+        el.controls = true;
+        el.loop = true;
+        el.autoplay = true;
+        el.muted = true;
+        el.playsInline = true;
+        el.playbackRate = videoSpeed;
+        strip.appendChild(el);
+      } else if (type === 'pdf') {
+        el = document.createElement('iframe');
+        el.src = url;
+        el.className = 'pdf-embed';
+        el.title = name;
+        strip.appendChild(el);
+      } else {
+        el = document.createElement('img');
+        el.src = url;
+        el.loading = 'lazy';
+        el.alt = `Page ${i + 1}`;
+        strip.appendChild(el);
+      }
+      currentMediaEls.push({ el, sep });
+    });
+  }
+}
+
+function clearContent() {
+  grid.innerHTML = '';
+  strip.innerHTML = '';
+  grid.style.display = 'none';
+  strip.style.display = 'none';
+  emptyState.style.display = 'flex';
+  infoPanel.style.display = 'none';
+  setUrlParam('');
+}
+
+// ── ZOOM ──────────────────────────────────────────────────────────────────────
+const zoomSlider = document.getElementById('zoom-slider');
+const content    = document.getElementById('content');
+
+function applyZoom(val) {
+  const z = val / 100;
+  content.style.setProperty('--zoom', z);
+}
+
+zoomSlider.addEventListener('input', () => applyZoom(zoomSlider.value));
+applyZoom(zoomSlider.value);
+
+// ── VIDEO SPEED ───────────────────────────────────────────────────────────────
+const speedSlider = document.getElementById('speed-slider');
+const speedLabel  = document.getElementById('speed-label');
+let videoSpeed = 1;
+
+function applySpeed(val) {
+  videoSpeed = parseFloat(val);
+  speedLabel.textContent = videoSpeed + '×';
+  // update all live video elements
+  document.querySelectorAll('video').forEach(v => { v.playbackRate = videoSpeed; });
+}
+
+speedSlider.addEventListener('input', () => applySpeed(speedSlider.value));
+
+// ── RESIZER ───────────────────────────────────────────────────────────────────
+const sidebar = document.getElementById('sidebar');
+const resizer = document.getElementById('resizer');
+
+resizer.addEventListener('mousedown', (e) => {
+  e.preventDefault();
+  resizer.classList.add('dragging');
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+
+  const onMove = (e) => {
+    const bodyRect = document.getElementById('body').getBoundingClientRect();
+    const newW = Math.min(Math.max(e.clientX - bodyRect.left, 120), bodyRect.width - 200);
+    sidebar.style.width = newW + 'px';
+  };
+
+  const onUp = () => {
+    resizer.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+  };
+
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+});
+
+// ── TRASH ─────────────────────────────────────────────────────────────────────
+const btnTrash = document.getElementById('btn-trash');
+
+// Recursively copy a directory into destParent under the same name
+async function copyDir(srcDir, destParent) {
+  const destDir = await destParent.getDirectoryHandle(srcDir.name, { create: true });
+  for await (const entry of srcDir.values()) {
+    if (entry.kind === 'file') {
+      const file = await entry.getFile();
+      const dest = await destDir.getFileHandle(entry.name, { create: true });
+      const writable = await dest.createWritable();
+      await writable.write(file);
+      await writable.close();
+    } else {
+      await copyDir(entry, destDir);
+    }
+  }
+}
+
+// Recursively remove all contents then the directory itself via parent
+async function removeDir(parentHandle, dirName) {
+  const dir = await parentHandle.getDirectoryHandle(dirName);
+  for await (const entry of dir.values()) {
+    if (entry.kind === 'file') await dir.removeEntry(entry.name);
+    else await removeDir(dir, entry.name);
+  }
+  await parentHandle.removeEntry(dirName);
+}
+
+// Navigate rootHandle along a path string, creating dirs as needed
+async function getOrCreateDirAtPath(root, pathStr) {
+  let cur = root;
+  for (const part of pathStr.split('/').filter(Boolean)) {
+    cur = await cur.getDirectoryHandle(part, { create: true });
+  }
+  return cur;
+}
+
+// Get the parent directory handle of a path
+async function getDirHandle(root, pathStr) {
+  let cur = root;
+  const parts = pathStr.split('/').filter(Boolean);
+  for (const part of parts) {
+    cur = await cur.getDirectoryHandle(part);
+  }
+  return cur;
+}
+
+async function trashCurrentFolder() {
+  if (!currentDirHandle || !rootHandle || !currentDirPath) return;
+
+  btnTrash.disabled = true;
+  try {
+    // Request permission first — must happen before any other await
+    const perm = await rootHandle.requestPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') { alert('Write permission denied.'); return; }
+
+    // Now safe to show confirm (user activation already used for permission)
+    const confirmed = confirm(`Move "${currentDirHandle.name}" to Trash?\n\nIt will be moved to: trash/${currentDirPath}`);
+    if (!confirmed) return;
+
+    // Build trash destination: trash/<currentDirPath without last segment>
+    const pathParts = currentDirPath.split('/').filter(Boolean);
+    const parentPath = pathParts.slice(0, -1).join('/');
+    const trashParent = await getOrCreateDirAtPath(rootHandle, 'trash/' + parentPath);
+
+    // Copy the folder into trash
+    await copyDir(currentDirHandle, trashParent);
+
+    // Remove original — need parent handle
+    let srcParent = rootHandle;
+    if (pathParts.length > 1) {
+      srcParent = await getDirHandle(rootHandle, pathParts.slice(0, -1).join('/'));
+    }
+
+    // Collect siblings before deletion, sorted to match current tree order
+    const siblings = await getSortedSiblings(srcParent);
+    const currentIdx = siblings.indexOf(currentDirHandle.name);
+    const nextName = siblings[currentIdx + 1] ?? siblings[currentIdx - 1] ?? null;
+
+    await removeDir(srcParent, currentDirHandle.name);
+
+    // Invalidate search cache and refresh tree
+    allEntries = null;
+    treeEl.innerHTML = '';
+    await buildTree(treeEl, rootHandle, 0);
+
+    // Navigate to next sibling or clear
+    if (nextName) {
+      const nextHandle = await srcParent.getDirectoryHandle(nextName);
+      const parentPath = pathParts.slice(0, -1).join('/');
+      const nextPath = parentPath ? `${parentPath}/${nextName}` : nextName;
+      // Re-expand the tree to the next sibling
+      await expandTreePath(nextPath, true);
+    } else {
+      clearContent();
+      currentDirHandle = null;
+      currentDirPath = '';
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Trash failed: ' + err.message);
+  } finally {
+    btnTrash.disabled = false;
+  }
+}
+
+btnTrash.addEventListener('click', trashCurrentFolder);
+
+// ── TRASH SINGLE FILE ─────────────────────────────────────────────────────────
+async function trashCurrentFile() {
+  if (!currentDirHandle || !rootHandle || !currentDirPath) return;
+  const item = lbItems[lbIndex];
+  if (!item) return;
+
+  const confirmed = confirm(`Move "${item.name}" to Trash?`);
+  if (!confirmed) return;
+
+  try {
+    const perm = await rootHandle.requestPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') { alert('Write permission denied.'); return; }
+
+    // Copy file to trash/<currentDirPath>/
+    const trashDir = await getOrCreateDirAtPath(rootHandle, 'trash/' + currentDirPath);
+    const srcFile  = await currentDirHandle.getFileHandle(item.name);
+    const file     = await srcFile.getFile();    const destFile = await trashDir.getFileHandle(item.name, { create: true });
+    const writable = await destFile.createWritable();
+    await writable.write(file);
+    await writable.close();
+
+    // Remove original
+    await currentDirHandle.removeEntry(item.name);
+
+    // Remove from lbItems and currentFileHandles
+    lbItems.splice(lbIndex, 1);
+    currentFileHandles.splice(lbIndex, 1);
+
+    // Remove just the corresponding DOM element — no scroll reset
+    const elEntry = currentMediaEls[lbIndex];
+    if (elEntry) {
+      if (mode === 'tile') {
+        elEntry.remove(); // tile div
+      } else {
+        elEntry.el.remove();
+        elEntry.sep.remove();
+      }
+    }
+    currentMediaEls.splice(lbIndex, 1);
+
+    if (lbItems.length === 0) {
+      closeLightbox();
+      clearContent();
+      return;
+    }
+
+    // Move to next (or last) item
+    if (lbIndex >= lbItems.length) lbIndex = lbItems.length - 1;
+    await showLightboxFrame();
+  } catch (err) {
+    console.error(err);
+    alert('Trash failed: ' + err.message);
+  }
+}
+
+// ── TILE TOOLTIP ──────────────────────────────────────────────────────────────
+const tileTooltip = document.getElementById('tile-tooltip');
+let tooltipTarget = null;
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+  return (b / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+function formatDate(ts) {
+  return new Date(ts).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+}
+
+function ttRow(label, val) {
+  return `<div class="tt-row"><span class="tt-label">${label}</span><span class="tt-val">${val}</span></div>`;
+}
+
+function showTooltip(x, y, html) {
+  tileTooltip.innerHTML = html;
+  tileTooltip.classList.add('visible');
+  positionTooltip(x, y);
+}
+
+function positionTooltip(x, y) {
+  const pad = 12;
+  const tw = tileTooltip.offsetWidth;
+  const th = tileTooltip.offsetHeight;
+  let left = x + 14;
+  let top  = y + 14;
+  if (left + tw + pad > window.innerWidth)  left = x - tw - 14;
+  if (top  + th + pad > window.innerHeight) top  = y - th - 14;
+  tileTooltip.style.left = left + 'px';
+  tileTooltip.style.top  = top  + 'px';
+}
+
+function hideTooltip() {
+  tileTooltip.classList.remove('visible');
+  tooltipTarget = null;
+}
+
+function attachTileTooltip(tile, imgEl, handle, pageNum, total) {
+  let meta = null; // cached after first hover
+
+  tile.addEventListener('mouseenter', async (e) => {
+    tooltipTarget = tile;
+
+    // build initial html with what we know synchronously
+    let html = ttRow('Page:', `${pageNum}/${total}`);
+
+    // fetch file metadata once
+    if (!meta) {
+      const file = await handle.getFile();
+      const w = imgEl.naturalWidth  || '—';
+      const h = imgEl.naturalHeight || '—';
+      meta = {
+        name: file.name,
+        size: formatBytes(file.size),
+        modified: formatDate(file.lastModified),
+        w, h,
+      };
+    }
+
+    // if image has loaded by now, grab dimensions
+    if (imgEl.naturalWidth) {
+      meta.w = imgEl.naturalWidth;
+      meta.h = imgEl.naturalHeight;
+    }
+
+    html += `<div class="tt-row tt-wrap"><span class="tt-label">Name:</span><span class="tt-val">${meta.name}</span></div>`;
+    html += ttRow('Size:', meta.size);
+    html += ttRow('Dimensions:', `${meta.w}×${meta.h}`);
+    html += ttRow('Modified:', meta.modified);
+
+    if (tooltipTarget === tile) showTooltip(e.clientX, e.clientY, html);
+  });
+
+  tile.addEventListener('mousemove', (e) => {
+    if (tooltipTarget === tile) positionTooltip(e.clientX, e.clientY);
+  });
+
+  tile.addEventListener('mouseleave', hideTooltip);
+}
+
+// also update dimensions once image loads
+document.addEventListener('load', (e) => {
+  if (e.target.tagName === 'IMG' && e.target.closest('.tile')) {
+    // tooltip will pick up naturalWidth/Height on next hover
+  }
+}, true);
+
+// ── LIGHTBOX ──────────────────────────────────────────────────────────────────
+const lightbox      = document.getElementById('lightbox');
+const lightboxImg   = document.getElementById('lightbox-img');
+const lightboxVid   = document.getElementById('lightbox-vid');
+const lightboxPdf   = document.getElementById('lightbox-pdf');
+const lightboxClose = document.getElementById('lightbox-close');
+const lightboxPrev  = document.getElementById('lightbox-prev');
+const lightboxNext  = document.getElementById('lightbox-next');
+const lightboxPage  = document.getElementById('lightbox-page');
+
+let lbItems = []; // array of {handle, type, name}
+let lbIndex = 0;
+let lbCurrentBlobUrl = null; // track current blob so we can revoke it
+
+function openLightbox(items, index) {
+  // items come from renderFromHandles as {url, type, name, handle}
+  // store handles, not urls
+  lbItems = items;
+  lbIndex = index;
+  showLightboxFrame();
+  lightbox.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+async function showLightboxFrame() {
+  const item = lbItems[lbIndex];
+  const { type, name } = item;
+
+  // revoke previous blob
+  if (lbCurrentBlobUrl) { URL.revokeObjectURL(lbCurrentBlobUrl); lbCurrentBlobUrl = null; }
+
+  // create fresh blob from handle
+  const file = await item.handle.getFile();
+  const url = URL.createObjectURL(file);
+  lbCurrentBlobUrl = url;
+
+  lightboxImg.style.display = 'none';
+  lightboxVid.style.display = 'none';
+  lightboxPdf.style.display = 'none';
+  lightboxImg.onload = null;
+
+  lightboxPage.textContent = `${lbIndex + 1} / ${lbItems.length}  ·  ${name}`;
+  lightboxPrev.disabled = lbIndex === 0;
+  lightboxNext.disabled = lbIndex === lbItems.length - 1;
+
+  if (type === 'video') {
+    lightboxVid.src = url;
+    lightboxVid.playbackRate = videoSpeed;
+    lightboxVid.style.display = 'block';
+  } else if (type === 'pdf') {
+    lightboxPdf.src = url;
+    lightboxPdf.style.display = 'block';
+  } else {
+    lightboxImg.src = url;
+    lightboxImg.style.display = 'block';
+    lightboxImg.onload = () => {
+      lightboxPage.textContent = `${lbIndex + 1} / ${lbItems.length}  ·  ${name}  ·  ${lightboxImg.naturalWidth} × ${lightboxImg.naturalHeight}`;
+    };
+  }
+}
+
+function closeLightbox() {
+  lightbox.classList.remove('open');
+  document.body.style.overflow = '';
+  lightboxVid.pause?.();
+  if (lbCurrentBlobUrl) { URL.revokeObjectURL(lbCurrentBlobUrl); lbCurrentBlobUrl = null; }
+  setTimeout(() => { lightboxImg.src = ''; lightboxVid.src = ''; lightboxPdf.src = ''; }, 200);
+}
+
+lightboxClose.addEventListener('click', closeLightbox);
+lightboxPrev.addEventListener('click', async () => { if (lbIndex > 0) { lbIndex--; await showLightboxFrame(); } });
+lightboxNext.addEventListener('click', async () => { if (lbIndex < lbItems.length - 1) { lbIndex++; await showLightboxFrame(); } });
+lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
+// ── SIBLING NAVIGATION ────────────────────────────────────────────────────────
+async function getSortedSiblings(parentHandle) {
+  const names = [];
+  for await (const e of parentHandle.values()) {
+    if (e.kind === 'directory' && e.name !== 'trash') names.push(e.name);
+  }
+  if (sortByCount) {
+    const counts = await Promise.all(names.map(async name => {
+      let n = 0;
+      const d = await parentHandle.getDirectoryHandle(name);
+      for await (const _ of d.values()) n++;
+      return { name, n };
+    }));
+    counts.sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, undefined, { numeric: true }));
+    return counts.map(c => c.name);
+  }
+  return names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+async function navigateSibling(direction) {
+  if (!currentDirHandle || !rootHandle || !currentDirPath) return;
+  const pathParts = currentDirPath.split('/').filter(Boolean);
+  let parentHandle = rootHandle;
+  if (pathParts.length > 1) {
+    parentHandle = await getDirHandle(rootHandle, pathParts.slice(0, -1).join('/'));
+  }
+  const siblings = await getSortedSiblings(parentHandle);
+  const idx = siblings.indexOf(currentDirHandle.name);
+  const targetName = direction === 'next' ? siblings[idx + 1] : siblings[idx - 1];
+  if (!targetName) return;
+  const parentPath = pathParts.slice(0, -1).join('/');
+  const targetPath = parentPath ? `${parentPath}/${targetName}` : targetName;
+  await expandTreePath(targetPath, true);
+}
+
+document.addEventListener('keydown', async (e) => {
+  const typing = document.activeElement.tagName === 'INPUT';
+  // Trash shortcut: Backspace (when not typing)
+  if (e.key === 'Backspace' && !typing) {
+    if (lightbox.classList.contains('open')) trashCurrentFile();
+    else trashCurrentFolder();
+    return;
+  }
+  // Comic navigation: up/down arrows (when not typing, lightbox closed)
+  if (!typing && !lightbox.classList.contains('open')) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); navigateSibling('next'); return; }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); navigateSibling('prev'); return; }
+  }
+  if (!lightbox.classList.contains('open')) return;
+  if (e.key === 'Escape')      closeLightbox();
+  if (e.key === 'ArrowLeft')  { if (lbIndex > 0) { lbIndex--; await showLightboxFrame(); } }
+  if (e.key === 'ArrowRight') { if (lbIndex < lbItems.length - 1) { lbIndex++; await showLightboxFrame(); } }
+});
+</script>
+</body>
+</html>
