@@ -777,6 +777,205 @@
       };
     }
   }
+
+  // ── Levels ───────────────────────────────────────────────────────────────────
+
+  const LEVELS = [
+    // Level 1: "First Drop" — 1 ball, 1 bolt, 1 tube, no platforms
+    {
+      id: 1,
+      name: 'First Drop',
+      platforms: [],
+      bolts: [
+        { id: 'b1', x: 240, y: 200, holdsBallIds: ['ball1'] },
+      ],
+      balls: [
+        { id: 'ball1', color: '#ef4444', x: 240, y: 200, radius: 16 },
+      ],
+      tubes: [
+        { id: 'tube1', color: '#ef4444', x: 208, y: 560, width: 64, height: 100, capacity: 1 },
+      ],
+    },
+
+    // Level 2: "Shelf" — 2 balls, 2 bolts, 2 tubes, 1 horizontal platform shelf
+    {
+      id: 2,
+      name: 'Shelf',
+      platforms: [
+        { x: 140, y: 380, width: 200, height: 16, angle: 0 },
+      ],
+      bolts: [
+        { id: 'b1', x: 160, y: 200, holdsBallIds: ['ball1'] },
+        { id: 'b2', x: 320, y: 200, holdsBallIds: ['ball2'] },
+      ],
+      balls: [
+        { id: 'ball1', color: '#ef4444', x: 160, y: 200, radius: 16 },
+        { id: 'ball2', color: '#3b82f6', x: 320, y: 200, radius: 16 },
+      ],
+      tubes: [
+        { id: 'tube1', color: '#ef4444', x: 80,  y: 560, width: 64, height: 100, capacity: 1 },
+        { id: 'tube2', color: '#3b82f6', x: 336, y: 560, width: 64, height: 100, capacity: 1 },
+      ],
+    },
+
+    // Level 3: "Ramp" — 3 balls, 3 bolts, 3 tubes, 1 angled ramp platform
+    {
+      id: 3,
+      name: 'Ramp',
+      platforms: [
+        { x: 100, y: 400, width: 220, height: 16, angle: 0 },
+      ],
+      bolts: [
+        { id: 'b1', x: 120, y: 180, holdsBallIds: ['ball1'] },
+        { id: 'b2', x: 240, y: 180, holdsBallIds: ['ball2'] },
+        { id: 'b3', x: 360, y: 180, holdsBallIds: ['ball3'] },
+      ],
+      balls: [
+        { id: 'ball1', color: '#ef4444', x: 120, y: 180, radius: 16 },
+        { id: 'ball2', color: '#3b82f6', x: 240, y: 180, radius: 16 },
+        { id: 'ball3', color: '#22c55e', x: 360, y: 180, radius: 16 },
+      ],
+      tubes: [
+        { id: 'tube1', color: '#ef4444', x: 56,  y: 560, width: 64, height: 100, capacity: 1 },
+        { id: 'tube2', color: '#3b82f6', x: 208, y: 560, width: 64, height: 100, capacity: 1 },
+        { id: 'tube3', color: '#22c55e', x: 360, y: 560, width: 64, height: 100, capacity: 1 },
+      ],
+    },
+
+    // Level 4: "Crossover" — 4 balls (2 red, 2 blue), 4 bolts, 2 tubes capacity 2
+    {
+      id: 4,
+      name: 'Crossover',
+      platforms: [
+        { x: 80,  y: 340, width: 140, height: 16, angle: 0 },
+        { x: 260, y: 420, width: 140, height: 16, angle: 0 },
+      ],
+      bolts: [
+        { id: 'b1', x: 120, y: 160, holdsBallIds: ['ball1'] },
+        { id: 'b2', x: 240, y: 160, holdsBallIds: ['ball2'] },
+        { id: 'b3', x: 120, y: 260, holdsBallIds: ['ball3'] },
+        { id: 'b4', x: 360, y: 260, holdsBallIds: ['ball4'] },
+      ],
+      balls: [
+        { id: 'ball1', color: '#ef4444', x: 120, y: 160, radius: 16 },
+        { id: 'ball2', color: '#3b82f6', x: 240, y: 160, radius: 16 },
+        { id: 'ball3', color: '#ef4444', x: 120, y: 260, radius: 16 },
+        { id: 'ball4', color: '#3b82f6', x: 360, y: 260, radius: 16 },
+      ],
+      tubes: [
+        { id: 'tube1', color: '#ef4444', x: 112, y: 560, width: 80, height: 120, capacity: 2 },
+        { id: 'tube2', color: '#3b82f6', x: 288, y: 560, width: 80, height: 120, capacity: 2 },
+      ],
+    },
+
+    // Level 5: "Cascade" — 5 balls, 5 bolts, 5 tubes, multi-tier; ball5 held by 2 bolts
+    {
+      id: 5,
+      name: 'Cascade',
+      platforms: [
+        { x: 60,  y: 300, width: 160, height: 16, angle: 0 },
+        { x: 260, y: 380, width: 160, height: 16, angle: 0 },
+        { x: 60,  y: 460, width: 160, height: 16, angle: 0 },
+      ],
+      bolts: [
+        { id: 'b1', x: 100, y: 160, holdsBallIds: ['ball1'] },
+        { id: 'b2', x: 200, y: 160, holdsBallIds: ['ball2'] },
+        { id: 'b3', x: 300, y: 160, holdsBallIds: ['ball3'] },
+        { id: 'b4', x: 380, y: 200, holdsBallIds: ['ball4', 'ball5'] },
+        { id: 'b5', x: 380, y: 280, holdsBallIds: ['ball5'] },
+      ],
+      balls: [
+        { id: 'ball1', color: '#ef4444', x: 100, y: 160, radius: 16 },
+        { id: 'ball2', color: '#3b82f6', x: 200, y: 160, radius: 16 },
+        { id: 'ball3', color: '#22c55e', x: 300, y: 160, radius: 16 },
+        { id: 'ball4', color: '#eab308', x: 380, y: 200, radius: 16 },
+        { id: 'ball5', color: '#a855f7', x: 380, y: 280, radius: 16 },
+      ],
+      tubes: [
+        { id: 'tube1', color: '#ef4444', x: 24,  y: 580, width: 56, height: 90, capacity: 1 },
+        { id: 'tube2', color: '#3b82f6', x: 104, y: 580, width: 56, height: 90, capacity: 1 },
+        { id: 'tube3', color: '#22c55e', x: 184, y: 580, width: 56, height: 90, capacity: 1 },
+        { id: 'tube4', color: '#eab308', x: 264, y: 580, width: 56, height: 90, capacity: 1 },
+        { id: 'tube5', color: '#a855f7', x: 344, y: 580, width: 56, height: 90, capacity: 1 },
+      ],
+    },
+  ];
+
+  // ── Bootstrap & Game Loop ─────────────────────────────────────────────────────
+
+  const physics      = new Physics();
+  const renderer     = new Renderer();
+  const input        = new InputHandler();
+  const levelManager = new LevelManager();
+
+  renderer.init(canvas);
+  input.attach(canvas);
+
+  // Wire tap → bolt hit test → unscrew (task 9.3)
+  // Also handles restart and next-level button taps (tasks 9.4, 9.5)
+  input.onTap((x, y) => {
+    const gs = levelManager.gameState;
+
+    // Restart button (HUD) — always available
+    const rb = renderer.restartBtnRect;
+    if (rb && x >= rb.x && x <= rb.x + rb.w && y >= rb.y && y <= rb.y + rb.h) {
+      levelManager.loadLevel(levelManager.currentIndex);
+      return;
+    }
+
+    if (gs === 'WIN') {
+      const nb = renderer.nextBtnRect;
+      if (nb && x >= nb.x && x <= nb.x + nb.w && y >= nb.y && y <= nb.y + nb.h) {
+        levelManager.loadLevel(levelManager.currentIndex + 1);
+      }
+      return;
+    }
+
+    if (gs === 'LOSE') {
+      levelManager.loadLevel(levelManager.currentIndex);
+      return;
+    }
+
+    if (gs === 'PLAYING') {
+      const bolt = levelManager.hitTestBolt(x, y);
+      if (bolt) levelManager.unscrewBolt(bolt);
+    }
+  });
+
+  // Start level 0
+  levelManager.loadLevel(0);
+
+  // Game loop (task 9.1)
+  let lastTimestamp = null;
+
+  function gameLoop(timestamp) {
+    if (lastTimestamp === null) lastTimestamp = timestamp;
+    const rawDt = (timestamp - lastTimestamp) / 1000;
+    const dt = Math.min(Math.max(rawDt, 0), 0.05);
+    lastTimestamp = timestamp;
+
+    if (levelManager.gameState === 'PLAYING') {
+      physics.integrate(levelManager.balls, levelManager.platforms, dt);
+      for (const ball of levelManager.balls) {
+        if (ball.dynamic && !ball.captured) {
+          physics.resolveWallBounce(ball, CANVAS_W, CANVAS_H);
+        }
+      }
+      const events = physics.checkTubeCapture(levelManager.balls, levelManager.tubes);
+      for (const ev of events) {
+        levelManager.onBallCaptured(ev);
+        const ball = levelManager.balls.find(b => b.id === ev.ballId);
+        if (ball) renderer.spawnParticles(ball.x, ball.y, ball.color, 'capture');
+      }
+      levelManager.updateBoltAnimations(dt);
+      levelManager.checkLoseCondition();
+    }
+
+    renderer.drawFrame(levelManager.getRenderState(dt));
+    requestAnimationFrame(gameLoop);
+  }
+
+  requestAnimationFrame(gameLoop);
 </script>
 </body>
 </html>

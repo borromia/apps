@@ -147,15 +147,15 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
     - **Property 9: Particle life is always in [0, 1]**
     - **Validates: Requirements 11.3, 11.4**
 
-- [-] 8. Implement `InputHandler`
-  - [-] 8.1 Implement `attach(canvas)`, `detach()`, and `onTap(handler)`
+- [x] 8. Implement `InputHandler`
+  - [x] 8.1 Implement `attach(canvas)`, `detach()`, and `onTap(handler)`
     - Listen for `mousedown` and `touchstart` on canvas
     - Convert event coordinates to canvas logical space using `getBoundingClientRect()` and `devicePixelRatio`
     - Fire `onTap` callback with canvas-space `(x, y)`
     - _Requirements: 3.1, 3.2, 3.3, 3.5, 3.6_
 
-- [~] 9. Implement the main game loop and wire all components together
-  - [~] 9.1 Implement `gameLoop(timestamp)` using `requestAnimationFrame`
+- [-] 9. Implement the main game loop and wire all components together
+  - [-] 9.1 Implement `gameLoop(timestamp)` using `requestAnimationFrame`
     - Compute `dt = Math.min(Math.max((timestamp - lastTimestamp) / 1000, 0), 0.05)`
     - Initialize `lastTimestamp` on first frame
     - If `gameState === 'PLAYING'`: call `physics.integrate`, `physics.resolveWallBounce`, `physics.checkTubeCapture`, `levelManager.updateBoltAnimations`, `levelManager.checkLoseCondition`
