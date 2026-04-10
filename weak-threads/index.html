@@ -93,6 +93,47 @@
     const ctx = canvas.getContext('2d');
     // Scale context so all drawing coordinates remain in logical pixels
     ctx.scale(dpr, dpr);
+
+    // --- PhysicsEngine ---
+    // Thin wrapper around Matter.js. Does NOT use Matter.Runner —
+    // the game loop drives physics manually via step(dt).
+    class PhysicsEngine {
+      init(canvas) {
+        this.engine = Matter.Engine.create();
+        this.world  = this.engine.world;
+      }
+
+      addBody(body) {
+        Matter.World.add(this.world, body);
+      }
+
+      removeBody(body) {
+        Matter.World.remove(this.world, body);
+      }
+
+      addConstraint(c) {
+        Matter.World.add(this.world, c);
+      }
+
+      removeConstraint(c) {
+        Matter.World.remove(this.world, c);
+      }
+
+      // handler receives the pairs array from the collisionStart event
+      onCollisionStart(handler) {
+        Matter.Events.on(this.engine, 'collisionStart', e => handler(e.pairs));
+      }
+
+      // dt is in seconds; Matter.Engine.update expects milliseconds
+      step(dt) {
+        Matter.Engine.update(this.engine, dt * 1000);
+      }
+
+      clear() {
+        Matter.World.clear(this.world, false);
+        Matter.Engine.clear(this.engine);
+      }
+    }
   }
 </script>
 </body>
