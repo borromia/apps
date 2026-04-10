@@ -66,7 +66,124 @@
   // Scale context so all drawing coordinates remain in logical pixels
   ctx.scale(dpr, dpr);
 
-  // game code goes here
+  // ── Level Definition Types ──────────────────────────────────────────────────
+
+  /**
+   * @typedef {Object} LevelData
+   * @property {number} id
+   * @property {string} name
+   * @property {PlatformDef[]} platforms
+   * @property {BoltDef[]} bolts
+   * @property {BallDef[]} balls
+   * @property {TubeDef[]} tubes
+   */
+
+  /**
+   * @typedef {Object} PlatformDef
+   * @property {number} x
+   * @property {number} y
+   * @property {number} width
+   * @property {number} height
+   * @property {number} [angle]  - radians, default 0
+   */
+
+  /**
+   * @typedef {Object} BoltDef
+   * @property {string} id
+   * @property {number} x
+   * @property {number} y
+   * @property {string[]} holdsBallIds
+   */
+
+  /**
+   * @typedef {Object} BallDef
+   * @property {string} id
+   * @property {string} color
+   * @property {number} x
+   * @property {number} y
+   * @property {number} radius
+   */
+
+  /**
+   * @typedef {Object} TubeDef
+   * @property {string} id
+   * @property {string} color
+   * @property {number} x
+   * @property {number} y
+   * @property {number} width
+   * @property {number} height
+   * @property {number} capacity
+   */
+
+  // ── Runtime State Types ──────────────────────────────────────────────────────
+
+  /**
+   * @typedef {Object} BallState
+   * @property {string} id
+   * @property {string} color
+   * @property {number} x
+   * @property {number} y
+   * @property {number} radius
+   * @property {number} vx
+   * @property {number} vy
+   * @property {boolean} dynamic
+   * @property {boolean} captured
+   * @property {string|null} capturedTubeId
+   */
+
+  /**
+   * @typedef {Object} BoltState
+   * @property {string} id
+   * @property {number} x
+   * @property {number} y
+   * @property {string[]} holdsBallIds
+   * @property {number} angle
+   * @property {boolean} unscrewing
+   * @property {number} animTimer
+   * @property {boolean} removed
+   */
+
+  /**
+   * @typedef {Object} TubeState
+   * @property {string} id
+   * @property {string} color
+   * @property {number} x
+   * @property {number} y
+   * @property {number} width
+   * @property {number} height
+   * @property {number} capacity
+   * @property {string[]} capturedBalls
+   */
+
+  /**
+   * @typedef {Object} CaptureEvent
+   * @property {string} ballId
+   * @property {string} tubeId
+   * @property {boolean} colorMatch
+   */
+
+  /**
+   * @typedef {Object} Particle
+   * @property {number} x
+   * @property {number} y
+   * @property {number} vx
+   * @property {number} vy
+   * @property {number} life
+   * @property {string} color
+   * @property {number} radius
+   */
+
+  // ── Constants ────────────────────────────────────────────────────────────────
+
+  const GRAVITY          = 980;
+  const RESTITUTION      = 0.35;
+  const FRICTION         = 0.85;
+  const TAP_RADIUS       = 24;
+  const UNSCREW_DURATION = 0.35;
+  const UNSCREW_SPEED    = Math.PI * 4;
+  const PARTICLE_CAP     = 200;
+  const CANVAS_W         = LOGICAL_W;
+  const CANVAS_H         = LOGICAL_H;
 </script>
 </body>
 </html>

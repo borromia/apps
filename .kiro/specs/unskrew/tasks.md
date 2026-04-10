@@ -6,15 +6,15 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
 
 ## Tasks
 
-- [-] 1. Scaffold `unskrew/index.html` with canvas, font link, and game container
+- [x] 1. Scaffold `unskrew/index.html` with canvas, font link, and game container
   - Create `unskrew/index.html` with a `<canvas id="game-canvas">` element
   - Link HurmeGeoSans2 font from `../fonts/hurme-geometric-sans/` via `@font-face` in a `<style>` block
   - Size canvas backing store by `devicePixelRatio`; scale context by `devicePixelRatio`
   - Add a `<style>` block with `body { margin:0; background:#f0f0f0; display:flex; justify-content:center; align-items:center; height:100vh; }` and `canvas { display:block; }`
   - _Requirements: 1.1, 1.6, 10.10_
 
-- [~] 2. Define data models and constants
-  - [~] 2.1 Define JSDoc-commented shapes for `LevelData`, `PlatformDef`, `BoltDef`, `BallDef`, `TubeDef`
+- [-] 2. Define data models and constants
+  - [-] 2.1 Define JSDoc-commented shapes for `LevelData`, `PlatformDef`, `BoltDef`, `BallDef`, `TubeDef`
     - Include all fields from the design document
     - _Requirements: 2.1_
   - [~] 2.2 Define runtime state shapes `BallState`, `BoltState`, `TubeState`, `CaptureEvent`, `Particle` as JSDoc comments
