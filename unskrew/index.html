@@ -184,6 +184,140 @@
   const PARTICLE_CAP     = 200;
   const CANVAS_W         = LOGICAL_W;
   const CANVAS_H         = LOGICAL_H;
+
+  // ── Physics ──────────────────────────────────────────────────────────────────
+
+  class Physics {
+    /**
+     * Euler-integrate all dynamic, non-captured balls; resolve platform collisions.
+     * @param {BallState[]} balls
+     * @param {PlatformDef[]} platforms
+     * @param {number} dt - seconds, already clamped to (0, 0.05]
+     */
+    integrate(balls, platforms, dt) {
+      for (const ball of balls) {
+        if (!ball.dynamic || ball.captured) continue;
+
+        // Apply gravity
+        ball.vy += GRAVITY * dt;
+
+        // Euler integrate position
+        ball.x += ball.vx * dt;
+        ball.y += ball.vy * dt;
+
+        // Resolve platform collisions
+        for (const platform of platforms) {
+          if (this.circleOverlapsRect(ball, platform)) {
+            const { nx, ny, penetration } = this.computeCollisionNormal(ball, platform);
+            // Displace ball out of platform
+            ball.x += nx * penetration;
+            ball.y += ny * penetration;
+            // Reflect velocity along normal with restitution
+            const dot = ball.vx * nx + ball.vy * ny;
+            if (dot < 0) {
+              ball.vx -= (1 + RESTITUTION) * dot * nx;
+              ball.vy -= (1 + RESTITUTION) * dot * ny;
+              // Apply friction to tangential component
+              ball.vx *= FRICTION;
+              ball.vy *= FRICTION;
+            }
+          }
+        }
+      }
+    }
+
+    /**
+     * Bounce ball off left, right, and top canvas walls.
+     * Bottom is intentionally open (balls fall off for lose condition).
+     * @param {BallState} ball
+     * @param {number} canvasW
+     * @param {number} canvasH
+     */
+    resolveWallBounce(ball, canvasW, canvasH) {
+      if (ball.x - ball.radius < 0) {
+        ball.x = ball.radius;
+        ball.vx = Math.abs(ball.vx) * RESTITUTION;
+      }
+      if (ball.x + ball.radius > canvasW) {
+        ball.x = canvasW - ball.radius;
+        ball.vx = -Math.abs(ball.vx) * RESTITUTION;
+      }
+      if (ball.y - ball.radius < 0) {
+        ball.y = ball.radius;
+        ball.vy = Math.abs(ball.vy) * RESTITUTION;
+      }
+      // No bottom bounce — balls fall off screen for lose condition
+    }
+
+    /**
+     * Detect balls entering tube mouths and capture them.
+     * @param {BallState[]} balls
+     * @param {TubeState[]} tubes
+     * @returns {CaptureEvent[]}
+     */
+    checkTubeCapture(balls, tubes) {
+      const events = [];
+      for (const ball of balls) {
+        if (!ball.dynamic || ball.captured) continue;
+        for (const tube of tubes) {
+          if (tube.capturedBalls.length >= tube.capacity) continue;
+          // Check if ball center is within tube mouth AABB
+          if (
+            ball.x >= tube.x &&
+            ball.x <= tube.x + tube.width &&
+            ball.y >= tube.y &&
+            ball.y <= tube.y + tube.height
+          ) {
+            const colorMatch = ball.color === tube.color;
+            events.push({ ballId: ball.id, tubeId: tube.id, colorMatch });
+            // Snap ball to rest position inside tube, stacking above prior captures
+            ball.x = tube.x + tube.width / 2;
+            ball.y = tube.y + tube.height - ball.radius - tube.capturedBalls.length * ball.radius * 2.2;
+            ball.vx = 0;
+            ball.vy = 0;
+            ball.captured = true;
+            ball.capturedTubeId = tube.id;
+            tube.capturedBalls.push(ball.id);
+            break; // ball can only be captured once
+          }
+        }
+      }
+      return events;
+    }
+
+    /**
+     * Standard AABB-circle overlap test.
+     * @param {BallState} ball
+     * @param {{x:number, y:number, width:number, height:number}} rect
+     * @returns {boolean}
+     */
+    circleOverlapsRect(ball, rect) {
+      const cx = Math.max(rect.x, Math.min(ball.x, rect.x + rect.width));
+      const cy = Math.max(rect.y, Math.min(ball.y, rect.y + rect.height));
+      const dx = ball.x - cx;
+      const dy = ball.y - cy;
+      return (dx * dx + dy * dy) < (ball.radius * ball.radius);
+    }
+
+    /**
+     * Returns {nx, ny, penetration} for circle vs AABB.
+     * nx, ny is the outward normal from the rect surface toward the ball center.
+     * @param {BallState} ball
+     * @param {{x:number, y:number, width:number, height:number}} rect
+     * @returns {{nx:number, ny:number, penetration:number}}
+     */
+    computeCollisionNormal(ball, rect) {
+      const cx = Math.max(rect.x, Math.min(ball.x, rect.x + rect.width));
+      const cy = Math.max(rect.y, Math.min(ball.y, rect.y + rect.height));
+      let dx = ball.x - cx;
+      let dy = ball.y - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
+      const nx = dx / dist;
+      const ny = dy / dist;
+      const penetration = ball.radius - dist;
+      return { nx, ny, penetration };
+    }
+  }
 </script>
 </body>
 </html>

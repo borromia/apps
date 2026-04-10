@@ -13,32 +13,32 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
   - Add a `<style>` block with `body { margin:0; background:#f0f0f0; display:flex; justify-content:center; align-items:center; height:100vh; }` and `canvas { display:block; }`
   - _Requirements: 1.1, 1.6, 10.10_
 
-- [-] 2. Define data models and constants
-  - [-] 2.1 Define JSDoc-commented shapes for `LevelData`, `PlatformDef`, `BoltDef`, `BallDef`, `TubeDef`
+- [x] 2. Define data models and constants
+  - [x] 2.1 Define JSDoc-commented shapes for `LevelData`, `PlatformDef`, `BoltDef`, `BallDef`, `TubeDef`
     - Include all fields from the design document
     - _Requirements: 2.1_
-  - [~] 2.2 Define runtime state shapes `BallState`, `BoltState`, `TubeState`, `CaptureEvent`, `Particle` as JSDoc comments
+  - [x] 2.2 Define runtime state shapes `BallState`, `BoltState`, `TubeState`, `CaptureEvent`, `Particle` as JSDoc comments
     - _Requirements: 2.2, 2.3_
-  - [~] 2.3 Declare top-level constants: `GRAVITY = 980`, `RESTITUTION = 0.35`, `FRICTION = 0.85`, `TAP_RADIUS = 24`, `UNSCREW_DURATION = 0.35`, `UNSCREW_SPEED = Math.PI * 4`, `PARTICLE_CAP = 200`
+  - [x] 2.3 Declare top-level constants: `GRAVITY = 980`, `RESTITUTION = 0.35`, `FRICTION = 0.85`, `TAP_RADIUS = 24`, `UNSCREW_DURATION = 0.35`, `UNSCREW_SPEED = Math.PI * 4`, `PARTICLE_CAP = 200`
     - _Requirements: 6.1, 6.3, 6.4, 5.1, 5.2_
 
-- [~] 3. Implement `Physics` module
-  - [~] 3.1 Implement `integrate(balls, platforms, dt)`
+- [-] 3. Implement `Physics` module
+  - [-] 3.1 Implement `integrate(balls, platforms, dt)`
     - Apply `GRAVITY` to `vy` for each dynamic non-captured ball
     - Euler-integrate `x` and `y`
     - For each platform, call `circleOverlapsRect`; if overlapping, compute collision normal and penetration depth, displace ball, reflect velocity with `RESTITUTION`, apply `FRICTION` to tangential component
     - Skip balls where `dynamic === false` or `captured === true`
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
-  - [~] 3.2 Implement `resolveWallBounce(ball, canvasW, canvasH)`
+  - [-] 3.2 Implement `resolveWallBounce(ball, canvasW, canvasH)`
     - Clamp ball to canvas bounds; reflect `vx` on left/right walls, reflect `vy` on top wall with `RESTITUTION`
     - _Requirements: 6.8_
-  - [~] 3.3 Implement `checkTubeCapture(balls, tubes)`
+  - [-] 3.3 Implement `checkTubeCapture(balls, tubes)`
     - For each dynamic non-captured ball, check if ball centre is within tube mouth AABB and tube has capacity
     - On capture: set `ball.vx = 0`, `ball.vy = 0`, `ball.captured = true`, `ball.capturedTubeId`, snap ball position to stacked rest position inside tube, push ball id to `tube.capturedBalls`
     - Return array of `CaptureEvent` with `colorMatch` flag
     - Do not modify balls where `dynamic === false`
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8_
-  - [~] 3.4 Implement helper `circleOverlapsRect(ball, rect)` and `computeCollisionNormal(ball, rect)`
+  - [-] 3.4 Implement helper `circleOverlapsRect(ball, rect)` and `computeCollisionNormal(ball, rect)`
     - Standard AABB-circle overlap test; return closest-point normal
     - _Requirements: 6.3_
   - [ ]* 3.5 Write property test for `integrate` — Property 3: dt clamping produces no NaN
