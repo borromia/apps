@@ -5,7 +5,7 @@ Always use `commit-and-push.sh` to commit and push changes. Never use raw `git c
 ## Usage
 
 ```bash
-bash commit-and-push.sh "your commit message"
+./commit-and-push.sh "your commit message"
 ```
 
 ## What it does
