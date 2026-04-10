@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Unskrew</title>
+<style>
+  @font-face {
+    font-family: 'HurmeGeoSans2';
+    src: url('../fonts/hurme-geometric-sans/regular.otf') format('opentype');
+    font-weight: 400;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: 'HurmeGeoSans2';
+    src: url('../fonts/hurme-geometric-sans/bold.otf') format('opentype');
+    font-weight: 700;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: 'HurmeGeoSans2';
+    src: url('../fonts/hurme-geometric-sans/semibold.otf') format('opentype');
+    font-weight: 600;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: 'HurmeGeoSans2';
+    src: url('../fonts/hurme-geometric-sans/light.otf') format('opentype');
+    font-weight: 300;
+    font-style: normal;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    margin: 0;
+    background: #f0f0f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+
+  canvas {
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game-canvas"></canvas>
+
+<script>
+  // Size canvas backing store by devicePixelRatio for crisp rendering on high-DPI displays
+  const canvas = document.getElementById('game-canvas');
+  const dpr = window.devicePixelRatio || 1;
+  const LOGICAL_W = 480;
+  const LOGICAL_H = 700;
+
+  canvas.width = LOGICAL_W * dpr;
+  canvas.height = LOGICAL_H * dpr;
+  canvas.style.width = LOGICAL_W + 'px';
+  canvas.style.height = LOGICAL_H + 'px';
+
+  const ctx = canvas.getContext('2d');
+  // Scale context so all drawing coordinates remain in logical pixels
+  ctx.scale(dpr, dpr);
+
+  // game code goes here
+</script>
+</body>
+</html>
