@@ -7,6 +7,21 @@
 <script src="https://unpkg.com/idb-keyval@6/dist/umd.js"></script>
 <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
 <style>
+  @font-face { font-family: 'HurmeGeoSans2'; src: url('../fonts/hurme-geometric-sans/regular.otf'); font-weight: 400; font-style: normal; }
+  @font-face { font-family: 'HurmeGeoSans2'; src: url('../fonts/hurme-geometric-sans/regular-italic.otf'); font-weight: 400; font-style: italic; }
+  @font-face { font-family: 'HurmeGeoSans2'; src: url('../fonts/hurme-geometric-sans/light.otf'); font-weight: 300; font-style: normal; }
+  @font-face { font-family: 'HurmeGeoSans2'; src: url('../fonts/hurme-geometric-sans/light-italic.otf'); font-weight: 300; font-style: italic; }
+  @font-face { font-family: 'HurmeGeoSans2'; src: url('../fonts/hurme-geometric-sans/semibold.otf'); font-weight: 600; font-style: normal; }
+  @font-face { font-family: 'HurmeGeoSans2'; src: url('../fonts/hurme-geometric-sans/semibold-italic.otf'); font-weight: 600; font-style: italic; }
+  @font-face { font-family: 'HurmeGeoSans2'; src: url('../fonts/hurme-geometric-sans/bold.otf'); font-weight: 700; font-style: normal; }
+  @font-face { font-family: 'HurmeGeoSans2'; src: url('../fonts/hurme-geometric-sans/bold-italic.otf'); font-weight: 700; font-style: italic; }
+  @font-face { font-family: 'HurmeGeoSans2'; src: url('../fonts/hurme-geometric-sans/black.otf'); font-weight: 900; font-style: normal; }
+  @font-face { font-family: 'HurmeGeoSans2'; src: url('../fonts/hurme-geometric-sans/black-italic.otf'); font-weight: 900; font-style: italic; }
+  @font-face { font-family: 'HurmeGeoSans2'; src: url('../fonts/hurme-geometric-sans/thin.otf'); font-weight: 100; font-style: normal; }
+  @font-face { font-family: 'HurmeGeoSans2'; src: url('../fonts/hurme-geometric-sans/thin-italic.otf'); font-weight: 100; font-style: italic; }
+  @font-face { font-family: 'HurmeGeoSans2'; src: url('../fonts/hurme-geometric-sans/hairline.otf'); font-weight: 50; font-style: normal; }
+  @font-face { font-family: 'HurmeGeoSans2'; src: url('../fonts/hurme-geometric-sans/hairline-italic.otf'); font-weight: 50; font-style: italic; }
+
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
@@ -24,7 +39,7 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+    font-family: 'HurmeGeoSans2', -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
     font-size: 13px;
     height: 100vh;
     overflow: hidden;
