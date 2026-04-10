@@ -112,32 +112,32 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
 - [x] 6. Checkpoint — level manager complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 7. Implement `Renderer`
-  - [-] 7.1 Implement `init(canvas)` — store canvas reference, get 2D context, apply `devicePixelRatio` scaling
+- [x] 7. Implement `Renderer`
+  - [x] 7.1 Implement `init(canvas)` — store canvas reference, get 2D context, apply `devicePixelRatio` scaling
     - _Requirements: 1.2, 10.10_
-  - [-] 7.2 Implement `drawFrame(state)`
+  - [x] 7.2 Implement `drawFrame(state)`
     - Clear canvas; draw in order: background, platforms, tubes, balls, bolts, particles, HUD, overlays
     - Use `ctx.save()` / `ctx.restore()` around each draw call
     - Must not mutate any game state object
     - _Requirements: 10.1, 10.2, 10.8, 10.9_
-  - [-] 7.3 Implement `drawBackground(ctx, w, h)` — fill with light grey/white
+  - [x] 7.3 Implement `drawBackground(ctx, w, h)` — fill with light grey/white
     - _Requirements: 10.2_
-  - [-] 7.4 Implement `drawPlatform(ctx, platform)` — filled rounded rectangle
+  - [x] 7.4 Implement `drawPlatform(ctx, platform)` — filled rounded rectangle
     - _Requirements: 10.2_
-  - [-] 7.5 Implement `drawTube(ctx, tube)` — open-top rectangle with color fill matching `tube.color`
+  - [x] 7.5 Implement `drawTube(ctx, tube)` — open-top rectangle with color fill matching `tube.color`
     - _Requirements: 10.4_
-  - [-] 7.6 Implement `drawBall(ctx, ball)` — circle with radial gradient using `ball.color`
+  - [x] 7.6 Implement `drawBall(ctx, ball)` — circle with radial gradient using `ball.color`
     - _Requirements: 10.3_
-  - [-] 7.7 Implement `drawBolt(ctx, bolt)` — hex-head screw icon; rotate by `bolt.angle` when `bolt.unscrewing`
+  - [x] 7.7 Implement `drawBolt(ctx, bolt)` — hex-head screw icon; rotate by `bolt.angle` when `bolt.unscrewing`
     - _Requirements: 10.5, 10.6_
-  - [-] 7.8 Implement `drawHUD(ctx, levelIndex, canvasW)`
+  - [x] 7.8 Implement `drawHUD(ctx, levelIndex, canvasW)`
     - Draw level number (e.g. "Level 3") and a restart button rectangle with label
     - _Requirements: 10.7_
-  - [-] 7.9 Implement win overlay and lose overlay
+  - [x] 7.9 Implement win overlay and lose overlay
     - Win: "Level Complete!" with next-level button (or "You Win!" if `GAME_COMPLETE`)
     - Lose: "Try Again" overlay with restart button
     - _Requirements: 9.2, 8.5_
-  - [-] 7.10 Implement `spawnParticles(x, y, color, type)` and particle update/draw
+  - [x] 7.10 Implement `spawnParticles(x, y, color, type)` and particle update/draw
     - Spawn burst of ~20 particles with random velocities and `life = 1.0`
     - Each frame: update position by velocity, decrement `life`; remove particles with `life <= 0`
     - Cap particle array at `PARTICLE_CAP = 200`; evict oldest when exceeded
@@ -147,8 +147,8 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
     - **Property 9: Particle life is always in [0, 1]**
     - **Validates: Requirements 11.3, 11.4**
 
-- [~] 8. Implement `InputHandler`
-  - [~] 8.1 Implement `attach(canvas)`, `detach()`, and `onTap(handler)`
+- [-] 8. Implement `InputHandler`
+  - [-] 8.1 Implement `attach(canvas)`, `detach()`, and `onTap(handler)`
     - Listen for `mousedown` and `touchstart` on canvas
     - Convert event coordinates to canvas logical space using `getBoundingClientRect()` and `devicePixelRatio`
     - Fire `onTap` callback with canvas-space `(x, y)`

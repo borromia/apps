@@ -711,6 +711,72 @@
       ctx.restore();
     }
   }
+
+  // ── InputHandler ─────────────────────────────────────────────────────────────
+
+  class InputHandler {
+    constructor() {
+      this._canvas = null;
+      this._tapHandler = null;
+      this._onMouseDown = null;
+      this._onTouchStart = null;
+    }
+
+    /**
+     * Attach mouse and touch listeners to the canvas.
+     * @param {HTMLCanvasElement} canvas
+     */
+    attach(canvas) {
+      this._canvas = canvas;
+      this._onMouseDown = (e) => {
+        e.preventDefault();
+        const { x, y } = this._toCanvasSpace(e.clientX, e.clientY);
+        if (this._tapHandler) this._tapHandler(x, y);
+      };
+      this._onTouchStart = (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const { x, y } = this._toCanvasSpace(touch.clientX, touch.clientY);
+        if (this._tapHandler) this._tapHandler(x, y);
+      };
+      canvas.addEventListener('mousedown', this._onMouseDown);
+      canvas.addEventListener('touchstart', this._onTouchStart, { passive: false });
+    }
+
+    /**
+     * Remove all event listeners from the canvas.
+     */
+    detach() {
+      if (!this._canvas) return;
+      this._canvas.removeEventListener('mousedown', this._onMouseDown);
+      this._canvas.removeEventListener('touchstart', this._onTouchStart);
+      this._canvas = null;
+    }
+
+    /**
+     * Register the tap callback.
+     * @param {(x: number, y: number) => void} handler
+     */
+    onTap(handler) {
+      this._tapHandler = handler;
+    }
+
+    /**
+     * Convert client coordinates to canvas logical space.
+     * @param {number} clientX
+     * @param {number} clientY
+     * @returns {{x: number, y: number}}
+     */
+    _toCanvasSpace(clientX, clientY) {
+      const rect = this._canvas.getBoundingClientRect();
+      const scaleX = LOGICAL_W / rect.width;
+      const scaleY = LOGICAL_H / rect.height;
+      return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY,
+      };
+    }
+  }
 </script>
 </body>
 </html>
