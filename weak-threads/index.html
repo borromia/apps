@@ -412,6 +412,271 @@
         }
       }
     }
+
+    // ─── Renderer ──────────────────────────────────────────────────────────
+
+    class Renderer {
+      constructor() {
+        this.ctx = null;
+        this.canvas = null;
+        this.particles = [];
+        this.restartBtnRect = null;
+        this.nextBtnRect = null;
+      }
+
+      // Task 6.1 — init and drawFrame
+      init(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+      }
+
+      drawFrame(state) {
+        const ctx = this.ctx;
+        const { gameState, currentLevel, gemBody, basketBody, anchorBodies, activeThreads, starRating, currentIndex, dt } = state;
+
+        ctx.clearRect(0, 0, LOGICAL_W, LOGICAL_H);
+        ctx.fillStyle = '#0d0d14';
+        ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+
+        if (!currentLevel) return;
+
+        this.drawAnchors(ctx, anchorBodies);
+
+        for (const thread of activeThreads) {
+          this.drawThread(ctx, thread);
+        }
+
+        this.drawBasket(ctx, basketBody, currentLevel.basket);
+        this.drawGem(ctx, gemBody, currentLevel.gem);
+
+        this.updateParticles(dt);
+        this.drawParticles(ctx);
+
+        this.drawHUD(ctx, state);
+
+        if (gameState === 'WIN') this.drawWinOverlay(ctx, state);
+        if (gameState === 'LOSE') this.drawLoseOverlay(ctx);
+        if (gameState === 'GAME_COMPLETE') this.drawGameCompleteOverlay(ctx);
+      }
+
+      // Task 6.2 — drawThread
+      drawThread(ctx, constraint, alpha = 1) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = '#a78bfa';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = '#a78bfa';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.moveTo(constraint.bodyA.position.x, constraint.bodyA.position.y);
+        ctx.lineTo(constraint.bodyB.position.x, constraint.bodyB.position.y);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Task 6.4 — drawGem, drawBasket, drawAnchors
+      drawGem(ctx, gemBody, gemDef) {
+        ctx.save();
+        ctx.shadowColor = gemDef.color;
+        ctx.shadowBlur = 20;
+        const grad = ctx.createRadialGradient(
+          gemBody.position.x, gemBody.position.y, 0,
+          gemBody.position.x, gemBody.position.y, gemDef.radius
+        );
+        grad.addColorStop(0, '#e0d4ff');
+        grad.addColorStop(1, gemDef.color);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(gemBody.position.x, gemBody.position.y, gemDef.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      drawBasket(ctx, basketBody, basketDef) {
+        ctx.save();
+        ctx.strokeStyle = '#34d399';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#34d399';
+        ctx.shadowBlur = 10;
+        ctx.strokeRect(basketDef.x, basketDef.y, basketDef.width, basketDef.height);
+        ctx.restore();
+      }
+
+      drawAnchors(ctx, anchorBodies) {
+        for (const body of Object.values(anchorBodies)) {
+          ctx.save();
+          ctx.fillStyle = '#f59e0b';
+          ctx.shadowColor = '#f59e0b';
+          ctx.shadowBlur = 12;
+          ctx.beginPath();
+          ctx.arc(body.position.x, body.position.y, 8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      // Task 6.5 — drawHUD
+      drawHUD(ctx, state) {
+        const { gameState, currentIndex, starRating } = state;
+
+        // Level label
+        ctx.save();
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillStyle = '#f0f0f5';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText('Level ' + (currentIndex + 1), 16, 8);
+        ctx.restore();
+
+        // Star indicators (only show filled stars on WIN)
+        const stars = (gameState === 'WIN' && starRating != null) ? starRating : 0;
+        ctx.save();
+        ctx.font = 'bold 18px sans-serif';
+        ctx.textBaseline = 'top';
+        for (let i = 0; i < 3; i++) {
+          ctx.fillStyle = i < stars ? '#fbbf24' : '#4b5563';
+          ctx.textAlign = 'right';
+          ctx.fillText('★', LOGICAL_W - 56 - (2 - i) * 22, 8);
+        }
+        ctx.restore();
+
+        // Restart button
+        const btn = { x: LOGICAL_W - 48, y: 8, w: 40, h: 28 };
+        this.restartBtnRect = btn;
+        ctx.save();
+        ctx.fillStyle = 'rgba(167, 139, 250, 0.15)';
+        ctx.strokeStyle = 'rgba(167, 139, 250, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(btn.x, btn.y, btn.w, btn.h, 6);
+        ctx.fill();
+        ctx.stroke();
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillStyle = '#a78bfa';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('↺', btn.x + btn.w / 2, btn.y + btn.h / 2);
+        ctx.restore();
+      }
+
+      // Task 6.6 — overlays
+      drawWinOverlay(ctx, state) {
+        const { starRating, currentIndex } = state;
+        this.drawOverlayBackground(ctx);
+
+        this.drawCenteredText(ctx, 'Level Complete!', LOGICAL_H / 2 - 60, 'bold 36px sans-serif', '#a78bfa');
+
+        // Stars
+        const stars = starRating || 0;
+        ctx.save();
+        ctx.font = 'bold 36px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (let i = 0; i < 3; i++) {
+          ctx.fillStyle = i < stars ? '#fbbf24' : '#4b5563';
+          ctx.fillText('★', LOGICAL_W / 2 - 40 + i * 40, LOGICAL_H / 2);
+        }
+        ctx.restore();
+
+        // Next level / You Win button
+        const isLastLevel = currentIndex >= LEVELS.length - 1;
+        const btnLabel = isLastLevel ? 'You Win!' : 'Next Level →';
+        const btnW = 160, btnH = 40;
+        const btnX = LOGICAL_W / 2 - btnW / 2;
+        const btnY = LOGICAL_H / 2 + 55;
+        this.nextBtnRect = { x: btnX, y: btnY, w: btnW, h: btnH };
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(167, 139, 250, 0.2)';
+        ctx.strokeStyle = '#a78bfa';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(btnX, btnY, btnW, btnH, 8);
+        ctx.fill();
+        ctx.stroke();
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillStyle = '#f0f0f5';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(btnLabel, LOGICAL_W / 2, btnY + btnH / 2);
+        ctx.restore();
+      }
+
+      drawLoseOverlay(ctx) {
+        this.drawOverlayBackground(ctx);
+        this.drawCenteredText(ctx, 'Try Again', LOGICAL_H / 2 - 20, 'bold 36px sans-serif', '#ff6b6b');
+        this.drawCenteredText(ctx, 'The gem fell...', LOGICAL_H / 2 + 24, '18px sans-serif', '#9ca3af');
+      }
+
+      drawGameCompleteOverlay(ctx) {
+        this.drawOverlayBackground(ctx);
+        this.drawCenteredText(ctx, 'You Beat All Levels!', LOGICAL_H / 2 - 20, 'bold 36px sans-serif', '#fbbf24');
+        this.drawCenteredText(ctx, 'Congratulations!', LOGICAL_H / 2 + 28, '22px sans-serif', '#a78bfa');
+      }
+
+      // Task 6.7 — particles
+      spawnParticles(x, y, type) {
+        const color  = type === 'win' ? '#fbbf24' : '#a78bfa';
+        const radius = type === 'win' ? 4 : 3;
+        const spread = type === 'win' ? 120 : 80;
+
+        // Evict oldest if cap would be exceeded
+        while (this.particles.length + 12 > 200) {
+          this.particles.shift();
+        }
+
+        for (let i = 0; i < 12; i++) {
+          this.particles.push({
+            x, y,
+            vx: (Math.random() - 0.5) * spread * 2,
+            vy: (Math.random() - 0.5) * spread * 2,
+            life: 1.0,
+            color,
+            radius
+          });
+        }
+      }
+
+      updateParticles(dt) {
+        for (const p of this.particles) {
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.life -= dt * 1.5;
+          p.life = Math.max(0, Math.min(1, p.life));
+        }
+        this.particles = this.particles.filter(p => p.life > 0);
+      }
+
+      drawParticles(ctx) {
+        ctx.save();
+        for (const p of this.particles) {
+          ctx.globalAlpha = p.life;
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // ── Helpers ──────────────────────────────────────────────────────────
+
+      drawCenteredText(ctx, text, y, font, color) {
+        ctx.save();
+        ctx.font = font;
+        ctx.fillStyle = color;
+        ctx.textAlign = 'center';
+        ctx.fillText(text, LOGICAL_W / 2, y);
+        ctx.restore();
+      }
+
+      drawOverlayBackground(ctx) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(13, 13, 20, 0.75)';
+        ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+        ctx.restore();
+      }
+    }
   }
 </script>
 </body>
