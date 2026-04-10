@@ -1099,7 +1099,8 @@ async function buildTree(container, dirHandle, depth, parentPath = '') {
   entries.sort((a, b) => {
     if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
     if (sortByCount && a.kind === 'directory') {
-      return (countMap.get(b.name) ?? 0) - (countMap.get(a.name) ?? 0);
+      const diff = (countMap.get(b.name) ?? 0) - (countMap.get(a.name) ?? 0);
+      return diff !== 0 ? diff : a.name.localeCompare(b.name, undefined, { numeric: true });
     }
     return a.name.localeCompare(b.name, undefined, { numeric: true });
   });
