@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apps</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f0f1a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Blurry background blobs */
+    .bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.45;
+    }
+    .blob-1 { width: 600px; height: 600px; background: #6c3bff; top: -150px; left: -100px; }
+    .blob-2 { width: 500px; height: 500px; background: #ff3b8b; bottom: -100px; right: -80px; }
+    .blob-3 { width: 400px; height: 400px; background: #3bbfff; top: 40%; left: 40%; }
+
+    .grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 140px);
+      gap: 40px;
+      padding: 60px;
+      justify-content: center;
+    }
+
+    .app-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .app-icon {
+      width: 100px;
+      height: 100px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.15);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      overflow: hidden;
+    }
+
+    .app-item:hover .app-icon {
+      transform: scale(1.08) translateY(-4px);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25);
+    }
+
+    .app-label {
+      color: rgba(255,255,255,0.9);
+      font-size: 13px;
+      font-weight: 500;
+      text-align: center;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+      letter-spacing: 0.01em;
+    }
+
+    /* Comic Reader Icon */
+    .icon-comic {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <div class="grid">
+
+    <a class="app-item" href="./comic-reader/">
+      <div class="app-icon">
+        <svg class="icon-comic" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#7c3aed"/>
+              <stop offset="100%" style="stop-color:#db2777"/>
+            </linearGradient>
+            <linearGradient id="page-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.95"/>
+              <stop offset="100%" style="stop-color:#f0e6ff;stop-opacity:0.9"/>
+            </linearGradient>
+            <linearGradient id="panel-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#a855f7;stop-opacity:0.7"/>
+              <stop offset="100%" style="stop-color:#ec4899;stop-opacity:0.5"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Icon background -->
+          <rect width="100" height="100" rx="22" fill="url(#bg-grad)"/>
+
+          <!-- Subtle shine -->
+          <rect width="100" height="50" rx="22" fill="rgba(255,255,255,0.07)"/>
+
+          <!-- Back page shadow -->
+          <rect x="28" y="18" width="46" height="62" rx="5" fill="rgba(0,0,0,0.25)" transform="rotate(4 51 49)"/>
+
+          <!-- Main page -->
+          <rect x="22" y="16" width="46" height="62" rx="5" fill="url(#page-grad)"/>
+
+          <!-- Comic panels -->
+          <!-- Top-left panel -->
+          <rect x="27" y="21" width="18" height="16" rx="2" fill="url(#panel-grad)" stroke="rgba(109,40,217,0.6)" stroke-width="0.8"/>
+          <!-- Top-right panel -->
+          <rect x="47" y="21" width="16" height="16" rx="2" fill="rgba(236,72,153,0.35)" stroke="rgba(109,40,217,0.6)" stroke-width="0.8"/>
+          <!-- Middle full-width panel -->
+          <rect x="27" y="40" width="36" height="18" rx="2" fill="rgba(124,58,237,0.2)" stroke="rgba(109,40,217,0.6)" stroke-width="0.8"/>
+          <!-- Bottom-left panel -->
+          <rect x="27" y="61" width="16" height="12" rx="2" fill="rgba(236,72,153,0.25)" stroke="rgba(109,40,217,0.6)" stroke-width="0.8"/>
+          <!-- Bottom-right panel -->
+          <rect x="46" y="61" width="17" height="12" rx="2" fill="url(#panel-grad)" stroke="rgba(109,40,217,0.6)" stroke-width="0.8"/>
+
+          <!-- Speed lines in middle panel -->
+          <line x1="30" y1="44" x2="38" y2="52" stroke="rgba(109,40,217,0.4)" stroke-width="0.8"/>
+          <line x1="33" y1="43" x2="42" y2="51" stroke="rgba(109,40,217,0.3)" stroke-width="0.8"/>
+          <line x1="36" y1="42" x2="46" y2="50" stroke="rgba(109,40,217,0.3)" stroke-width="0.8"/>
+
+          <!-- Star burst in top-left panel -->
+          <polygon points="36,24 37.2,28 41,28 38,30.5 39.2,34.5 36,32 32.8,34.5 34,30.5 31,28 34.8,28" fill="rgba(250,204,21,0.85)"/>
+
+          <!-- Dots in bottom panels -->
+          <circle cx="35" cy="67" r="2" fill="rgba(109,40,217,0.5)"/>
+          <circle cx="54" cy="67" r="2" fill="rgba(236,72,153,0.6)"/>
+          <circle cx="58" cy="67" r="1.5" fill="rgba(236,72,153,0.4)"/>
+        </svg>
+      </div>
+      <span class="app-label">Comic Reader</span>
+    </a>
+
+  </div>
+
+</body>
+</html>
