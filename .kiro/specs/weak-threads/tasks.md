@@ -104,15 +104,15 @@ Build a single-file browser physics puzzle game (`weak-threads/index.html`) usin
     - **Property 9: Particle array never exceeds cap**
     - **Validates: Requirements 9.6**
 
-- [-] 7. Implement `InputHandler`
-  - [-] 7.1 Implement `attach(canvas)`, `detach()`, and `onCut(handler)`
+- [x] 7. Implement `InputHandler`
+  - [x] 7.1 Implement `attach(canvas)`, `detach()`, and `onCut(handler)`
     - Listen for `mousedown` and `touchstart` on canvas
     - Convert event coordinates to canvas space accounting for `devicePixelRatio` and `getBoundingClientRect()` offset
     - Fire `onCut` callback with canvas-space coordinates
     - _Requirements: 10.1, 10.2, 10.3_
 
-- [~] 8. Implement the main game loop and wire all components together
-  - [~] 8.1 Implement `gameLoop(timestamp)` using `requestAnimationFrame`
+- [-] 8. Implement the main game loop and wire all components together
+  - [-] 8.1 Implement `gameLoop(timestamp)` using `requestAnimationFrame`
     - Compute `dt = clamp((timestamp - lastTimestamp) / 1000, 0, 0.05)`
     - If `gameState === 'PLAYING'`: call `engine.step(dt)`, check lose condition
     - Always call `renderer.drawFrame(buildRenderState())`
@@ -121,11 +121,11 @@ Build a single-file browser physics puzzle game (`weak-threads/index.html`) usin
   - [ ]* 8.2 Write property test for game loop dt clamping — Property 3: dt always clamped
     - **Property 3: dt is always clamped**
     - **Validates: Requirements 6.2, 6.3**
-  - [~] 8.3 Wire `InputHandler.onCut` → `LevelManager.hitTestThread` → `LevelManager.cutThread` → `Renderer.spawnParticles`
+  - [-] 8.3 Wire `InputHandler.onCut` → `LevelManager.hitTestThread` → `LevelManager.cutThread` → `Renderer.spawnParticles`
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.6_
-  - [~] 8.4 Wire `PhysicsEngine.onCollisionStart` → `LevelManager.onGemCaught` → `Renderer` win overlay
+  - [-] 8.4 Wire `PhysicsEngine.onCollisionStart` → `LevelManager.onGemCaught` → `Renderer` win overlay
     - _Requirements: 4.1, 4.2, 4.4_
-  - [~] 8.5 Wire restart button and "Try Again" overlay click → `loadLevel(currentIndex)`
+  - [-] 8.5 Wire restart button and "Try Again" overlay click → `loadLevel(currentIndex)`
     - _Requirements: 7.3_
   - [ ]* 8.6 Write property test for level load — Property 1: ActiveThreads populated correctly
     - **Property 1: Level load populates ActiveThreads correctly**

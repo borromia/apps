@@ -731,7 +731,145 @@
         return { x, y };
       }
     }
-  }
+
+    // ─── Bootstrap ─────────────────────────────────────────────────────────
+
+    // Instantiate components
+    const engine = new PhysicsEngine();
+    engine.init(canvas);
+
+    const renderer = new Renderer();
+    renderer.init(canvas);
+
+    const levelManager = new LevelManager(engine, canvas);
+    const input = new InputHandler();
+
+    // Task 8.3 — Wire InputHandler.onCut → hitTestThread → cutThread → spawnParticles
+    input.onCut((x, y) => {
+      if (levelManager.gameState !== 'PLAYING') return;
+      const thread = levelManager.hitTestThread(x, y, levelManager.activeThreads);
+      if (thread) {
+        const mx = (thread.bodyA.position.x + thread.bodyB.position.x) / 2;
+        const my = (thread.bodyA.position.y + thread.bodyB.position.y) / 2;
+        levelManager.cutThread(thread);
+        renderer.spawnParticles(mx, my, 'cut');
+      }
+    });
+
+    input.attach(canvas);
+
+    // Task 8.4 — Wire PhysicsEngine.onCollisionStart → LevelManager.onGemCaught → win overlay
+    engine.onCollisionStart((pairs) => {
+      for (const pair of pairs) {
+        const labels = [pair.bodyA.label, pair.bodyB.label];
+        if (labels.includes('gem') && labels.includes('basket')) {
+          levelManager.onGemCaught();
+          if (levelManager.gemBody) {
+            renderer.spawnParticles(
+              levelManager.gemBody.position.x,
+              levelManager.gemBody.position.y,
+              'win'
+            );
+          }
+        }
+      }
+    });
+
+    // Task 8.1 — Game loop
+    let lastTimestamp = null;
+
+    function buildRenderState(dt) {
+      return {
+        gameState:    levelManager.gameState,
+        currentLevel: levelManager.currentLevel,
+        gemBody:      levelManager.gemBody,
+        basketBody:   levelManager.basketBody,
+        anchorBodies: levelManager.anchorBodies,
+        activeThreads: levelManager.activeThreads,
+        starRating:   levelManager.starRating,
+        currentIndex: levelManager.currentIndex,
+        dt
+      };
+    }
+
+    function gameLoop(timestamp) {
+      if (lastTimestamp === null) lastTimestamp = timestamp;
+      // Clamp dt to (0, 0.05] to prevent spiral-of-death on tab restore
+      const dt = Math.min(Math.max((timestamp - lastTimestamp) / 1000, 0), 0.05);
+      lastTimestamp = timestamp;
+
+      if (levelManager.gameState === 'PLAYING') {
+        engine.step(dt);
+        levelManager.checkLoseCondition();
+      }
+
+      renderer.drawFrame(buildRenderState(dt));
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Task 8.5 — Wire restart button and "Try Again" overlay click → loadLevel(currentIndex)
+    // Also wire "Next Level" button on win overlay → advanceLevel()
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) * (LOGICAL_W / rect.width);
+      const y = (e.clientY - rect.top) * (LOGICAL_H / rect.height);
+
+      // Restart button (always visible in HUD)
+      const rb = renderer.restartBtnRect;
+      if (rb && x >= rb.x && x <= rb.x + rb.w && y >= rb.y && y <= rb.y + rb.h) {
+        levelManager.loadLevel(levelManager.currentIndex);
+        return;
+      }
+
+      // "Try Again" overlay — click anywhere on lose overlay restarts
+      if (levelManager.gameState === 'LOSE') {
+        levelManager.loadLevel(levelManager.currentIndex);
+        return;
+      }
+
+      // "Next Level" button on win overlay
+      if (levelManager.gameState === 'WIN') {
+        const nb = renderer.nextBtnRect;
+        if (nb && x >= nb.x && x <= nb.x + nb.w && y >= nb.y && y <= nb.y + nb.h) {
+          levelManager.advanceLevel();
+        }
+        return;
+      }
+    });
+
+    // Touch equivalent for restart/next
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const x = (touch.clientX - rect.left) * (LOGICAL_W / rect.width);
+      const y = (touch.clientY - rect.top) * (LOGICAL_H / rect.height);
+
+      const rb = renderer.restartBtnRect;
+      if (rb && x >= rb.x && x <= rb.x + rb.w && y >= rb.y && y <= rb.y + rb.h) {
+        levelManager.loadLevel(levelManager.currentIndex);
+        return;
+      }
+
+      if (levelManager.gameState === 'LOSE') {
+        levelManager.loadLevel(levelManager.currentIndex);
+        return;
+      }
+
+      if (levelManager.gameState === 'WIN') {
+        const nb = renderer.nextBtnRect;
+        if (nb && x >= nb.x && x <= nb.x + nb.w && y >= nb.y && y <= nb.y + nb.h) {
+          levelManager.advanceLevel();
+        }
+        return;
+      }
+    }, { passive: false });
+
+    // Start the game
+    levelManager.loadLevel(0);
+    requestAnimationFrame(gameLoop);
+
+  } // end else block
 </script>
 </body>
 </html>
