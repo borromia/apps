@@ -120,11 +120,23 @@
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
     display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  #sidebar-header-top {
+    display: flex;
     align-items: center;
     justify-content: space-between;
   }
 
-  #btn-sort {
+  #sidebar-sort-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .sort-btn {
     display: flex;
     align-items: center;
     gap: 4px;
@@ -140,8 +152,31 @@
     letter-spacing: 0;
     transition: background 0.15s, color 0.15s;
   }
-  #btn-sort:hover { background: rgba(255,255,255,0.1); color: var(--text); }
-  #btn-sort.active { background: rgba(10,132,255,0.2); color: var(--accent); border-color: rgba(10,132,255,0.3); }
+  .sort-btn:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: var(--text); }
+  .sort-btn.active { background: rgba(10,132,255,0.2); color: var(--accent); border-color: rgba(10,132,255,0.3); }
+  .sort-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  #btn-refresh-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 7px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    margin-left: auto;
+    transition: background 0.15s, color 0.15s;
+  }
+  #btn-refresh-meta:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: var(--text); }
+  #btn-refresh-meta:disabled { opacity: 0.35; cursor: not-allowed; }
+  #btn-refresh-meta.spinning svg { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   /* ── SEARCH ── */
   #search-wrap {
@@ -670,11 +705,23 @@
   <!-- SIDEBAR -->
   <div id="sidebar">
     <div id="sidebar-header">
-      <span>Explorer</span>
-      <button id="btn-sort" title="Sort by item count">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
-        by count
-      </button>
+      <div id="sidebar-header-top">
+        <span>Explorer</span>
+        <button id="btn-refresh-meta" title="Calculate directory sizes">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          refresh
+        </button>
+      </div>
+      <div id="sidebar-sort-row">
+        <button id="btn-sort" class="sort-btn" title="Sort by item count">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
+          by count
+        </button>
+        <button id="btn-sort-size" class="sort-btn" title="Sort by total size" disabled>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          by size
+        </button>
+      </div>
     </div>
     <div id="search-wrap">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -758,12 +805,61 @@ let mode = 'tile'; // 'tile' | 'comic'
 let currentFileHandles = []; // FileSystemFileHandle[] for current view
 let currentMediaEls = [];   // parallel DOM elements (tile div or strip img/video/iframe)
 let sortByCount = new URL(location.href).searchParams.get('sort') === 'count';
+let sortBySize  = new URL(location.href).searchParams.get('sort') === 'size';
+if (sortBySize) sortByCount = false;
+
+// ── SIZE METADATA ─────────────────────────────────────────────────────────────
+// Stored in localStorage as comicReaderSizeMeta:<rootName> → JSON {path: bytes}
+let sizeMetaCache = null; // loaded on init, null = not available
+
+function sizeMetaKey() {
+  return rootHandle ? `comicReaderSizeMeta:${rootHandle.name}` : null;
+}
+
+function loadSizeMeta() {
+  const key = sizeMetaKey();
+  if (!key) return null;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveSizeMeta(meta) {
+  const key = sizeMetaKey();
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify(meta));
+}
+
+// Recursively sum all file sizes under a dirHandle, returns bytes
+async function calcDirSize(dirHandle, pathPrefix, out) {
+  let total = 0;
+  for await (const entry of dirHandle.values()) {
+    if (entry.kind === 'file') {
+      const f = await entry.getFile();
+      total += f.size;
+    } else {
+      const childPath = pathPrefix ? `${pathPrefix}/${entry.name}` : entry.name;
+      const childSize = await calcDirSize(entry, childPath, out);
+      out[childPath] = childSize;
+      total += childSize;
+    }
+  }
+  return total;
+}
+
+function updateSizeSortBtn() {
+  const btn = document.getElementById('btn-sort-size');
+  if (!btn) return;
+  const hasData = !!sizeMetaCache;
+  btn.disabled = !hasData;
+  btn.classList.toggle('active', sortBySize);
+}
 
 const btnOpen   = document.getElementById('btn-open');
 const btnTile   = document.getElementById('btn-tile');
 const btnComic  = document.getElementById('btn-comic');
 const btnFs     = document.getElementById('btn-fs');
-const btnSort   = document.getElementById('btn-sort');
 const treeEl    = document.getElementById('tree');
 const emptyTree = document.getElementById('empty-tree');
 const grid      = document.getElementById('image-grid');
@@ -894,6 +990,7 @@ function setUrlParam(path) {
   if (path) url.searchParams.set('comic', path);
   else url.searchParams.delete('comic');
   if (sortByCount) url.searchParams.set('sort', 'count');
+  else if (sortBySize) url.searchParams.set('sort', 'size');
   else url.searchParams.delete('sort');
   history.replaceState(null, '', url);
 }
@@ -936,6 +1033,8 @@ async function resolvePath(root, pathStr) {
     if (perm === 'granted') {
       rootHandle = saved;
       pathLabel.textContent = saved.name;
+      sizeMetaCache = loadSizeMeta();
+      updateSizeSortBtn();
       await buildTree(treeEl, saved, 0);
       emptyTree.style.display = 'none';
 
@@ -958,6 +1057,8 @@ btnOpen.addEventListener('click', async () => {
     allEntries = null;
     searchInput.value = '';
     searchClear.classList.remove('visible');
+    sizeMetaCache = loadSizeMeta(); // load any existing meta for this root
+    updateSizeSortBtn();
     await buildTree(treeEl, handle, 0);
     clearContent();
   } catch (e) {
@@ -966,15 +1067,54 @@ btnOpen.addEventListener('click', async () => {
 });
 
 // ── SORT TOGGLE ───────────────────────────────────────────────────────────────
-btnSort.classList.toggle('active', sortByCount); // reflect initial state from URL
+const btnSort     = document.getElementById('btn-sort');
+const btnSortSize = document.getElementById('btn-sort-size');
+const btnRefreshMeta = document.getElementById('btn-refresh-meta');
+
+btnSort.classList.toggle('active', sortByCount);
+
 btnSort.addEventListener('click', async () => {
   sortByCount = !sortByCount;
+  if (sortByCount) sortBySize = false;
   btnSort.classList.toggle('active', sortByCount);
+  updateSizeSortBtn();
   setUrlParam(currentDirPath);
   if (rootHandle) {
     treeEl.innerHTML = '';
     await buildTree(treeEl, rootHandle, 0);
     if (currentDirPath) await expandTreePath(currentDirPath, false);
+  }
+});
+
+btnSortSize.addEventListener('click', async () => {
+  if (!sizeMetaCache) return;
+  sortBySize = !sortBySize;
+  if (sortBySize) sortByCount = false;
+  btnSort.classList.toggle('active', sortByCount);
+  updateSizeSortBtn();
+  setUrlParam(currentDirPath);
+  if (rootHandle) {
+    treeEl.innerHTML = '';
+    await buildTree(treeEl, rootHandle, 0);
+    if (currentDirPath) await expandTreePath(currentDirPath, false);
+  }
+});
+
+btnRefreshMeta.addEventListener('click', async () => {
+  if (!rootHandle) return;
+  btnRefreshMeta.disabled = true;
+  btnRefreshMeta.classList.add('spinning');
+  try {
+    const meta = {};
+    await calcDirSize(rootHandle, '', meta);
+    sizeMetaCache = meta;
+    saveSizeMeta(meta);
+    updateSizeSortBtn();
+  } catch (err) {
+    console.error('Size metadata refresh failed:', err);
+  } finally {
+    btnRefreshMeta.disabled = false;
+    btnRefreshMeta.classList.remove('spinning');
   }
 });
 
@@ -1098,9 +1238,17 @@ async function buildTree(container, dirHandle, depth, parentPath = '') {
 
   entries.sort((a, b) => {
     if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
-    if (sortByCount && a.kind === 'directory') {
-      const diff = (countMap.get(b.name) ?? 0) - (countMap.get(a.name) ?? 0);
-      return diff !== 0 ? diff : a.name.localeCompare(b.name, undefined, { numeric: true });
+    if (a.kind === 'directory') {
+      const aPath = parentPath ? `${parentPath}/${a.name}` : a.name;
+      const bPath = parentPath ? `${parentPath}/${b.name}` : b.name;
+      if (sortBySize && sizeMetaCache) {
+        const diff = (sizeMetaCache[bPath] ?? 0) - (sizeMetaCache[aPath] ?? 0);
+        return diff !== 0 ? diff : a.name.localeCompare(b.name, undefined, { numeric: true });
+      }
+      if (sortByCount) {
+        const diff = (countMap.get(b.name) ?? 0) - (countMap.get(a.name) ?? 0);
+        return diff !== 0 ? diff : a.name.localeCompare(b.name, undefined, { numeric: true });
+      }
     }
     return a.name.localeCompare(b.name, undefined, { numeric: true });
   });
@@ -1717,6 +1865,17 @@ async function getSortedSiblings(parentHandle) {
   const names = [];
   for await (const e of parentHandle.values()) {
     if (e.kind === 'directory' && e.name !== 'trash') names.push(e.name);
+  }
+  if (sortBySize && sizeMetaCache) {
+    // resolve parent path to look up sizes
+    const parentPath = currentDirPath.split('/').filter(Boolean).slice(0, -1).join('/');
+    names.sort((a, b) => {
+      const aPath = parentPath ? `${parentPath}/${a}` : a;
+      const bPath = parentPath ? `${parentPath}/${b}` : b;
+      const diff = (sizeMetaCache[bPath] ?? 0) - (sizeMetaCache[aPath] ?? 0);
+      return diff !== 0 ? diff : a.localeCompare(b, undefined, { numeric: true });
+    });
+    return names;
   }
   if (sortByCount) {
     const counts = await Promise.all(names.map(async name => {

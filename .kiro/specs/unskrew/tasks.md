@@ -154,8 +154,8 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
     - Fire `onTap` callback with canvas-space `(x, y)`
     - _Requirements: 3.1, 3.2, 3.3, 3.5, 3.6_
 
-- [-] 9. Implement the main game loop and wire all components together
-  - [-] 9.1 Implement `gameLoop(timestamp)` using `requestAnimationFrame`
+- [x] 9. Implement the main game loop and wire all components together
+  - [x] 9.1 Implement `gameLoop(timestamp)` using `requestAnimationFrame`
     - Compute `dt = Math.min(Math.max((timestamp - lastTimestamp) / 1000, 0), 0.05)`
     - Initialize `lastTimestamp` on first frame
     - If `gameState === 'PLAYING'`: call `physics.integrate`, `physics.resolveWallBounce`, `physics.checkTubeCapture`, `levelManager.updateBoltAnimations`, `levelManager.checkLoseCondition`
@@ -166,38 +166,38 @@ Build a single-file browser physics puzzle game (`unskrew/index.html`) using the
   - [ ]* 9.2 Write property test for game loop — Property 3: dt always clamped
     - **Property 3: dt is always clamped to (0, 0.05]**
     - **Validates: Requirements 6.6, 13.2**
-  - [~] 9.3 Wire `InputHandler.onTap` → `LevelManager.hitTestBolt` → `LevelManager.unscrewBolt`
+  - [x] 9.3 Wire `InputHandler.onTap` → `LevelManager.hitTestBolt` → `LevelManager.unscrewBolt`
     - Guard: only act when `gameState === 'PLAYING'`
     - _Requirements: 3.4, 5.1_
-  - [~] 9.4 Wire restart button click (HUD and lose overlay) → `loadLevel(currentIndex)`
+  - [x] 9.4 Wire restart button click (HUD and lose overlay) → `loadLevel(currentIndex)`
     - Detect tap on restart button rect in `onTap` handler when `gameState !== 'PLAYING'` or HUD restart hit
     - _Requirements: 9.3, 12.7_
-  - [~] 9.5 Wire next-level button click (win overlay) → `loadLevel(currentIndex + 1)`
+  - [x] 9.5 Wire next-level button click (win overlay) → `loadLevel(currentIndex + 1)`
     - _Requirements: 8.5, 12.6_
-  - [~] 9.6 Implement `LevelManager.getRenderState()` — return snapshot object with all arrays needed by `Renderer.drawFrame`
+  - [x] 9.6 Implement `LevelManager.getRenderState()` — return snapshot object with all arrays needed by `Renderer.drawFrame`
     - _Requirements: 2.7, 10.8_
 
-- [~] 10. Checkpoint — game loop and wiring complete
+- [x] 10. Checkpoint — game loop and wiring complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [~] 11. Define `LEVELS` array with at least 5 handcrafted levels of increasing difficulty
-  - [~] 11.1 Level 1 "First Drop" — 1 ball, 1 bolt, 1 tube, no platforms; ball falls straight into matching tube
+- [x] 11. Define `LEVELS` array with at least 5 handcrafted levels of increasing difficulty
+  - [x] 11.1 Level 1 "First Drop" — 1 ball, 1 bolt, 1 tube, no platforms; ball falls straight into matching tube
     - _Requirements: 2.1, 2.2_
-  - [~] 11.2 Level 2 "Shelf" — 2 balls (red, blue), 2 bolts, 2 tubes, 1 horizontal platform acting as a shelf; player must unscrew in correct order
+  - [x] 11.2 Level 2 "Shelf" — 2 balls (red, blue), 2 bolts, 2 tubes, 1 horizontal platform acting as a shelf; player must unscrew in correct order
     - _Requirements: 2.1, 2.2_
-  - [~] 11.3 Level 3 "Ramp" — 3 balls (red, blue, green), 3 bolts, 3 tubes, 1 angled platform ramp that redirects balls; requires sequencing
+  - [x] 11.3 Level 3 "Ramp" — 3 balls (red, blue, green), 3 bolts, 3 tubes, 1 angled platform ramp that redirects balls; requires sequencing
     - _Requirements: 2.1, 2.2_
-  - [~] 11.4 Level 4 "Crossover" — 4 balls (2 red, 2 blue), 4 bolts, 2 tubes with capacity 2, platforms create crossing paths; wrong order causes color mismatch
+  - [x] 11.4 Level 4 "Crossover" — 4 balls (2 red, 2 blue), 4 bolts, 2 tubes with capacity 2, platforms create crossing paths; wrong order causes color mismatch
     - _Requirements: 2.1, 2.2, 7.5_
-  - [~] 11.5 Level 5 "Cascade" — 5 balls (red, blue, green, yellow, purple), 5 bolts, 5 tubes, multi-tier platform cascade; one ball held by 2 bolts requiring both to be unscrewed
+  - [x] 11.5 Level 5 "Cascade" — 5 balls (red, blue, green, yellow, purple), 5 bolts, 5 tubes, multi-tier platform cascade; one ball held by 2 bolts requiring both to be unscrewed
     - _Requirements: 2.1, 2.2, 5.6_
 
-- [~] 12. Add Unskrew to root `index.html` Games section
+- [x] 12. Add Unskrew to root `index.html` Games section
   - Open `index.html` and add a link/card for Unskrew in the Games section alongside the existing Weak Threads entry
   - Match the existing card style and link to `unskrew/index.html`
   - _Requirements: 1.6_
 
-- [~] 13. Final checkpoint — Ensure all tests pass
+- [x] 13. Final checkpoint — Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
