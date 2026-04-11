@@ -1322,13 +1322,19 @@ async function buildTree(container, dirHandle, depth, parentPath = '') {
     } else if (MEDIA_EXT.test(entry.name)) {
       row.innerHTML = `
         <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        <span class="name">${entry.name}</span>`;
+        <span class="name">${entry.name}</span>
+        <span class="tree-size"></span>`;
       row.addEventListener('click', async (e) => {
         e.stopPropagation();
         setActiveRow(row);
         await renderFromHandles([entry]);
       });
       container.appendChild(row);
+      // fetch size async so it doesn't block tree rendering
+      entry.getFile().then(f => {
+        const sizeEl = row.querySelector('.tree-size');
+        if (sizeEl) sizeEl.textContent = formatBytes(f.size);
+      }).catch(() => {});
     }
   }
 }
