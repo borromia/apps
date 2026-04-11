@@ -1298,8 +1298,12 @@ async function buildTree(container, dirHandle, depth, parentPath = '') {
         if (andLoad) await loadFolderImages(entry, row, entryPath);
       };
 
-      // expose expand on the row element for programmatic use
+      // expose expand/collapse on the row element for programmatic use
       row._expand = expand;
+      row._collapse = () => {
+        childContainer.style.display = 'none';
+        row.classList.remove('open');
+      };
 
       row.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -1913,6 +1917,11 @@ async function navigateSibling(direction) {
   const idx = siblings.indexOf(currentDirHandle.name);
   const targetName = direction === 'next' ? siblings[idx + 1] : siblings[idx - 1];
   if (!targetName) return;
+
+  // Collapse the current row before navigating
+  const currentRow = treeEl.querySelector(`[data-path="${CSS.escape(currentDirPath)}"]`);
+  if (currentRow?._collapse) currentRow._collapse();
+
   const parentPath = pathParts.slice(0, -1).join('/');
   const targetPath = parentPath ? `${parentPath}/${targetName}` : targetName;
   await expandTreePath(targetPath, true);
