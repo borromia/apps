@@ -559,6 +559,10 @@
     flex-shrink: 0;
     opacity: 0.9;
   }
+  .tree-item .fav-star.fav-star-ancestor {
+    opacity: 0.3;
+    color: var(--text-muted) !important;
+  }
   .info-title.is-favorite::before {
     content: '★ ';
     color: #fabb00;
@@ -967,7 +971,17 @@ function updateFavoriteButton(path) {
 function updateTreeFavStars() {
   // Remove all existing stars first
   document.querySelectorAll('.tree-item .fav-star').forEach(el => el.remove());
-  // Add star to each favorited tree row
+
+  // Collect all ancestor paths for every favorite
+  const ancestorPaths = new Set();
+  favorites.forEach(path => {
+    const parts = path.split('/').filter(Boolean);
+    for (let i = 1; i < parts.length; i++) {
+      ancestorPaths.add(parts.slice(0, i).join('/'));
+    }
+  });
+
+  // Add filled gold star to each directly favorited tree row
   favorites.forEach(path => {
     const row = treeEl.querySelector(`[data-path="${CSS.escape(path)}"]`);
     if (row && !row.querySelector('.fav-star')) {
@@ -975,6 +989,18 @@ function updateTreeFavStars() {
       star.className = 'fav-star';
       star.textContent = '★';
       star.style.color = '#fabb00';
+      row.appendChild(star);
+    }
+  });
+
+  // Add dim unfilled star to ancestor rows (only if not already a direct favorite)
+  ancestorPaths.forEach(path => {
+    if (favorites.has(path)) return; // already handled above
+    const row = treeEl.querySelector(`[data-path="${CSS.escape(path)}"]`);
+    if (row && !row.querySelector('.fav-star')) {
+      const star = document.createElement('span');
+      star.className = 'fav-star fav-star-ancestor';
+      star.textContent = '☆';
       row.appendChild(star);
     }
   });
