@@ -1365,15 +1365,14 @@ function folderIconSvg(kind) {
     return `<svg class="icon folder-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${folder}</svg>`;
   }
 
-  // Star polygon centered at bottom-right of the folder (14,14 canvas → ~10,11)
-  // Filled gold for favorite, dim outline for ancestor
-  const starPoints = '19,13 20,16 23,16 20.5,18 21.5,21 19,19.5 16.5,21 17.5,18 15,16 18,16';
-  const starFill   = kind === 'favorite' ? '#fabb00' : 'none';
-  const starStroke = kind === 'favorite' ? '#fabb00' : 'currentColor';
-  const starOpacity = kind === 'favorite' ? '1' : '0.35';
-  const star = `<polygon points="${starPoints}" fill="${starFill}" stroke="${starStroke}" stroke-width="1.2" opacity="${starOpacity}"/>`;
+  // Star polygon — bigger, bottom-right of folder
+  const starPoints = '20,11 21.5,15.5 26,15.5 22.5,18 23.8,22.5 20,20 16.2,22.5 17.5,18 14,15.5 18.5,15.5';
+  const starFill   = kind === 'favorite' ? '#fabb00' : 'rgba(255,255,255,0.55)';
+  const starStroke = kind === 'favorite' ? '#fabb00' : 'none';
+  const starOpacity = '1';
+  const star = `<polygon points="${starPoints}" fill="${starFill}" stroke="${starStroke}" stroke-width="0.8" opacity="${starOpacity}"/>`;
 
-  return `<svg class="icon folder-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${folder}${star}</svg>`;
+  return `<svg class="icon folder-icon" width="16" height="16" viewBox="0 0 28 26" fill="none" stroke="currentColor" stroke-width="2">${folder}${star}</svg>`;
 }
 
 function folderIcon(path) {
