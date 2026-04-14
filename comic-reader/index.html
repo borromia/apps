@@ -1367,7 +1367,7 @@ function folderIconSvg(kind) {
 
   // Star polygon — bigger, bottom-right of folder
   const starPoints = '20,11 21.5,15.5 26,15.5 22.5,18 23.8,22.5 20,20 16.2,22.5 17.5,18 14,15.5 18.5,15.5';
-  const starFill   = kind === 'favorite' ? '#fabb00' : 'rgba(255,255,255,0.55)';
+  const starFill   = kind === 'favorite' ? '#fabb00' : 'rgba(255,255,255,1)';
   const starStroke = kind === 'favorite' ? '#fabb00' : 'none';
   const starOpacity = '1';
   const star = `<polygon points="${starPoints}" fill="${starFill}" stroke="${starStroke}" stroke-width="0.8" opacity="${starOpacity}"/>`;
