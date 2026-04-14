@@ -554,14 +554,10 @@
   #btn-favorite.is-favorite:hover { background: rgba(250,180,0,0.18); }
 
   .tree-item .fav-star {
-    font-size: 10px;
-    line-height: 1;
-    flex-shrink: 0;
-    opacity: 0.9;
+    display: none; /* stars are now embedded in the folder icon */
   }
   .tree-item .fav-star.fav-star-ancestor {
-    opacity: 0.3;
-    color: var(--text-muted) !important;
+    display: none;
   }
   .info-title.is-favorite::before {
     content: '★ ';
@@ -981,28 +977,15 @@ function updateTreeFavStars() {
     }
   });
 
-  // Add filled gold star to each directly favorited tree row
-  favorites.forEach(path => {
-    const row = treeEl.querySelector(`[data-path="${CSS.escape(path)}"]`);
-    if (row && !row.querySelector('.fav-star')) {
-      const star = document.createElement('span');
-      star.className = 'fav-star';
-      star.textContent = '★';
-      star.style.color = '#fabb00';
-      row.appendChild(star);
-    }
-  });
-
-  // Add dim unfilled star to ancestor rows (only if not already a direct favorite)
-  ancestorPaths.forEach(path => {
-    if (favorites.has(path)) return; // already handled above
-    const row = treeEl.querySelector(`[data-path="${CSS.escape(path)}"]`);
-    if (row && !row.querySelector('.fav-star')) {
-      const star = document.createElement('span');
-      star.className = 'fav-star fav-star-ancestor';
-      star.textContent = '☆';
-      row.appendChild(star);
-    }
+  // Update folder icon for every visible tree row
+  document.querySelectorAll('.tree-item[data-path]').forEach(row => {
+    const path = row.dataset.path;
+    const oldIcon = row.querySelector('.folder-icon');
+    if (!oldIcon) return;
+    const kind = favorites.has(path) ? 'favorite'
+      : ancestorPaths.has(path) ? 'ancestor'
+      : 'plain';
+    oldIcon.outerHTML = folderIconSvg(kind);
   });
 }
 
@@ -1371,6 +1354,37 @@ const VIDEO_EXT = /\.(mp4|webm|mov|mkv|avi)$/i;
 const PDF_EXT   = /\.pdf$/i;
 const MEDIA_EXT = new RegExp(`${IMAGE_EXT.source}|${VIDEO_EXT.source}|${PDF_EXT.source}`, 'i');
 
+// ── FOLDER ICON ───────────────────────────────────────────────────────────────
+// Returns an SVG string for a folder icon, optionally with an overlaid star.
+// kind: 'plain' | 'favorite' | 'ancestor'
+function folderIconSvg(kind) {
+  // Folder path (standard open-folder shape)
+  const folder = `<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>`;
+
+  if (kind === 'plain') {
+    return `<svg class="icon folder-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${folder}</svg>`;
+  }
+
+  // Star polygon centered at bottom-right of the folder (14,14 canvas → ~10,11)
+  // Filled gold for favorite, dim outline for ancestor
+  const starPoints = '19,13 20,16 23,16 20.5,18 21.5,21 19,19.5 16.5,21 17.5,18 15,16 18,16';
+  const starFill   = kind === 'favorite' ? '#fabb00' : 'none';
+  const starStroke = kind === 'favorite' ? '#fabb00' : 'currentColor';
+  const starOpacity = kind === 'favorite' ? '1' : '0.35';
+  const star = `<polygon points="${starPoints}" fill="${starFill}" stroke="${starStroke}" stroke-width="1.2" opacity="${starOpacity}"/>`;
+
+  return `<svg class="icon folder-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${folder}${star}</svg>`;
+}
+
+function folderIcon(path) {
+  if (favorites.has(path)) return folderIconSvg('favorite');
+  // check if any favorite starts with this path + '/'
+  for (const fav of favorites) {
+    if (fav.startsWith(path + '/')) return folderIconSvg('ancestor');
+  }
+  return folderIconSvg('plain');
+}
+
 async function buildTree(container, dirHandle, depth, parentPath = '') {
   const entries = [];
   for await (const entry of dirHandle.values()) entries.push(entry);
@@ -1415,7 +1429,7 @@ async function buildTree(container, dirHandle, depth, parentPath = '') {
         : '';
       row.innerHTML = `
         <svg class="icon chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-        <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        ${folderIcon(entryPath)}
         <span class="name">${entry.name}</span>
         <span class="tree-count">${childCount}</span>${sizeStr}`;
 
