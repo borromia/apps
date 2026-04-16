@@ -568,6 +568,18 @@
     color: #fabb00;
   }
   #btn-favorite.is-favorite:hover { background: rgba(250,180,0,0.18); }
+  #btn-favorite kbd, #btn-trash kbd {
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.07);
+    font-family: inherit;
+  }
+  #btn-favorite.is-favorite kbd {
+    border-color: rgba(250,180,0,0.3);
+    background: rgba(250,180,0,0.1);
+  }
 
   .tree-item .fav-star {
     display: none; /* stars are now embedded in the folder icon */
@@ -825,9 +837,9 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>
             Extract text &amp; tag
           </button>
-          <button id="btn-favorite" title="Toggle favourite">
+          <button id="btn-favorite" title="Toggle favourite (F)">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            Favourite
+            Favourite <kbd>F</kbd>
           </button>
           <button id="btn-trash">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -999,7 +1011,11 @@ function updateFavoriteButton(path) {
   btnFavorite.classList.toggle('is-favorite', isFav);
   const svg = btnFavorite.querySelector('svg');
   svg.setAttribute('fill', isFav ? 'currentColor' : 'none');
-  btnFavorite.querySelector('svg').nextSibling.textContent = isFav ? ' Unfavourite' : ' Favourite';
+  // Update label text node (first text node after the svg)
+  const label = isFav ? ' Unfavourite ' : ' Favourite ';
+  let textNode = svg.nextSibling;
+  while (textNode && textNode.nodeType !== Node.TEXT_NODE) textNode = textNode.nextSibling;
+  if (textNode) textNode.textContent = label;
   infoTitle.classList.toggle('is-favorite', isFav);
   infoTitle.classList.toggle('is-read', readComics.has(path));
 }
@@ -2176,6 +2192,24 @@ document.addEventListener('keydown', async (e) => {
   if (e.key === 'Backspace' && !typing) {
     if (lightbox.classList.contains('open')) trashCurrentFile();
     else trashCurrentFolder();
+    return;
+  }
+  // Favourite shortcut: F (when not typing, folder selected)
+  if (e.key === 'f' && !typing && currentDirPath) {
+    if (favorites.has(currentDirPath)) favorites.delete(currentDirPath);
+    else favorites.add(currentDirPath);
+    await saveMetadata();
+    updateFavoriteButton(currentDirPath);
+    updateTreeIcons();
+    return;
+  }
+  // Read/unread shortcut: R (when not typing, folder selected)
+  if (e.key === 'r' && !typing && currentDirPath) {
+    if (readComics.has(currentDirPath)) readComics.delete(currentDirPath);
+    else readComics.add(currentDirPath);
+    await saveMetadata();
+    updateFavoriteButton(currentDirPath);
+    updateTreeIcons();
     return;
   }
   // Comic navigation: up/down arrows (when not typing, lightbox closed)
