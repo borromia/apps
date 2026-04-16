@@ -578,6 +578,15 @@
   .info-title.is-favorite::before {
     content: '★ ';
     color: #fabb00;
+  }
+  .info-title.is-read::after {
+    content: ' ✓';
+    color: #34d399;
+    font-size: 13px;
+  }
+  .info-title.is-favorite.is-read::after {
+    content: ' ✓';
+    color: #34d399;
   }  #ocr-progress {
     display: none;
     flex-direction: column;
@@ -939,37 +948,48 @@ const ocrProgress  = document.getElementById('ocr-progress');
 const ocrBar       = document.getElementById('ocr-progress-bar');
 const ocrStatus    = document.getElementById('ocr-status');
 
-// ── FAVORITES ─────────────────────────────────────────────────────────────────
+// ── FAVORITES & READ TRACKING ─────────────────────────────────────────────────
 // Stored in comic-reader-metadata.json at the root of the opened folder.
-// Schema: { "favorites": ["path/to/comic", ...] }
+// Schema: { "favorites": [...paths], "read": [...paths] }
 
-let favorites = new Set(); // Set of dir paths (relative to rootHandle)
+let favorites = new Set();
+let readComics = new Set();
 
-async function loadFavorites() {
-  favorites = new Set();
+async function loadMetadata() {
+  favorites  = new Set();
+  readComics = new Set();
   if (!rootHandle) return;
   try {
-    const fh = await rootHandle.getFileHandle('comic-reader-metadata.json');
+    const fh   = await rootHandle.getFileHandle('comic-reader-metadata.json');
     const file = await fh.getFile();
     const data = JSON.parse(await file.text());
     if (Array.isArray(data.favorites)) data.favorites.forEach(p => favorites.add(p));
+    if (Array.isArray(data.read))      data.read.forEach(p => readComics.add(p));
   } catch { /* file doesn't exist yet — that's fine */ }
 }
 
-async function saveFavorites() {
+// Keep the old name working so existing call-sites don't break
+const loadFavorites = loadMetadata;
+
+async function saveMetadata() {
   if (!rootHandle) return;
   try {
     const perm = await rootHandle.requestPermission({ mode: 'readwrite' });
     if (perm !== 'granted') { alert('Write permission denied.'); return; }
     const fh = await rootHandle.getFileHandle('comic-reader-metadata.json', { create: true });
     const writable = await fh.createWritable();
-    await writable.write(JSON.stringify({ favorites: [...favorites] }, null, 2));
+    await writable.write(JSON.stringify({
+      favorites: [...favorites],
+      read:      [...readComics],
+    }, null, 2));
     await writable.close();
   } catch (err) {
-    console.error('Failed to save favorites:', err);
-    alert('Could not save favorites: ' + err.message);
+    console.error('Failed to save metadata:', err);
+    alert('Could not save metadata: ' + err.message);
   }
 }
+
+const saveFavorites = saveMetadata;
 
 function updateFavoriteButton(path) {
   const isFav = favorites.has(path);
@@ -978,19 +998,25 @@ function updateFavoriteButton(path) {
   svg.setAttribute('fill', isFav ? 'currentColor' : 'none');
   btnFavorite.querySelector('svg').nextSibling.textContent = isFav ? ' Unfavourite' : ' Favourite';
   infoTitle.classList.toggle('is-favorite', isFav);
+  infoTitle.classList.toggle('is-read', readComics.has(path));
 }
 
-function updateTreeFavStars() {
+function updateTreeIcons() {
   // Remove all existing stars first
   document.querySelectorAll('.tree-item .fav-star').forEach(el => el.remove());
 
-  // Collect all ancestor paths for every favorite
-  const ancestorPaths = new Set();
+  // Collect ancestor paths for favorites
+  const favAncestors = new Set();
   favorites.forEach(path => {
     const parts = path.split('/').filter(Boolean);
-    for (let i = 1; i < parts.length; i++) {
-      ancestorPaths.add(parts.slice(0, i).join('/'));
-    }
+    for (let i = 1; i < parts.length; i++) favAncestors.add(parts.slice(0, i).join('/'));
+  });
+
+  // Collect ancestor paths for read comics
+  const readAncestors = new Set();
+  readComics.forEach(path => {
+    const parts = path.split('/').filter(Boolean);
+    for (let i = 1; i < parts.length; i++) readAncestors.add(parts.slice(0, i).join('/'));
   });
 
   // Update folder icon for every visible tree row
@@ -998,12 +1024,18 @@ function updateTreeFavStars() {
     const path = row.dataset.path;
     const oldIcon = row.querySelector('.folder-icon');
     if (!oldIcon) return;
-    const kind = favorites.has(path) ? 'favorite'
-      : ancestorPaths.has(path) ? 'ancestor'
+    // Favorite takes visual priority over read
+    const kind = favorites.has(path)    ? 'favorite'
+      : favAncestors.has(path)          ? 'fav-ancestor'
+      : readComics.has(path)            ? 'read'
+      : readAncestors.has(path)         ? 'read-ancestor'
       : 'plain';
     oldIcon.outerHTML = folderIconSvg(kind);
   });
 }
+
+// Keep old name as alias so existing call-sites work
+const updateTreeFavStars = updateTreeIcons;
 
 btnFavorite.addEventListener('click', async () => {
   if (!currentDirPath) return;
@@ -1020,6 +1052,7 @@ btnFavorite.addEventListener('click', async () => {
 let currentDirName = '';
 let currentDirHandle = null;
 let currentDirPath = ''; // relative path from rootHandle, e.g. "manga/One Piece"
+let readTimer = null;    // timeout id for marking a comic as read
 
 // Tag keyword map: category → keywords to look for in OCR text
 const TAG_KEYWORDS = {
@@ -1371,31 +1404,43 @@ const PDF_EXT   = /\.pdf$/i;
 const MEDIA_EXT = new RegExp(`${IMAGE_EXT.source}|${VIDEO_EXT.source}|${PDF_EXT.source}`, 'i');
 
 // ── FOLDER ICON ───────────────────────────────────────────────────────────────
-// Returns an SVG string for a folder icon, optionally with an overlaid star.
-// kind: 'plain' | 'favorite' | 'ancestor'
+// Returns an SVG string for a folder icon with optional badge.
+// kind: 'plain' | 'favorite' | 'fav-ancestor' | 'read' | 'read-ancestor'
 function folderIconSvg(kind) {
-  // Folder path (standard open-folder shape)
   const folder = `<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>`;
 
   if (kind === 'plain') {
     return `<svg class="icon folder-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${folder}</svg>`;
   }
 
-  // Star polygon — bigger, bottom-right of folder
-  const starPoints = '20,11 21.5,15.5 26,15.5 22.5,18 23.8,22.5 20,20 16.2,22.5 17.5,18 14,15.5 18.5,15.5';
-  const starFill   = kind === 'favorite' ? '#fabb00' : 'rgba(255,255,255,1)';
-  const starStroke = kind === 'favorite' ? '#fabb00' : 'none';
-  const starOpacity = '1';
-  const star = `<polygon points="${starPoints}" fill="${starFill}" stroke="${starStroke}" stroke-width="0.8" opacity="${starOpacity}"/>`;
+  if (kind === 'favorite' || kind === 'fav-ancestor') {
+    const starPoints = '20,11 21.5,15.5 26,15.5 22.5,18 23.8,22.5 20,20 16.2,22.5 17.5,18 14,15.5 18.5,15.5';
+    const starFill   = kind === 'favorite' ? '#fabb00' : 'rgba(255,255,255,1)';
+    const starStroke = kind === 'favorite' ? '#fabb00' : 'none';
+    const badge = `<polygon points="${starPoints}" fill="${starFill}" stroke="${starStroke}" stroke-width="0.8"/>`;
+    return `<svg class="icon folder-icon" width="16" height="16" viewBox="0 0 28 26" fill="none" stroke="currentColor" stroke-width="2">${folder}${badge}</svg>`;
+  }
 
-  return `<svg class="icon folder-icon" width="16" height="16" viewBox="0 0 28 26" fill="none" stroke="currentColor" stroke-width="2">${folder}${star}</svg>`;
+  if (kind === 'read' || kind === 'read-ancestor') {
+    // Checkmark circle badge, bottom-right
+    const fill   = kind === 'read' ? '#34d399' : 'rgba(255,255,255,1)';
+    const stroke = kind === 'read' ? '#34d399' : 'none';
+    const badge  = `<circle cx="20" cy="19" r="5" fill="${fill}" stroke="${stroke}" stroke-width="0.8"/>` +
+                   `<polyline points="17.5,19 19.2,20.8 22.5,17.5" fill="none" stroke="${kind === 'read' ? '#fff' : '#1a1a1e'}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>`;
+    return `<svg class="icon folder-icon" width="16" height="16" viewBox="0 0 28 26" fill="none" stroke="currentColor" stroke-width="2">${folder}${badge}</svg>`;
+  }
+
+  return `<svg class="icon folder-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${folder}</svg>`;
 }
 
 function folderIcon(path) {
   if (favorites.has(path)) return folderIconSvg('favorite');
-  // check if any favorite starts with this path + '/'
   for (const fav of favorites) {
-    if (fav.startsWith(path + '/')) return folderIconSvg('ancestor');
+    if (fav.startsWith(path + '/')) return folderIconSvg('fav-ancestor');
+  }
+  if (readComics.has(path)) return folderIconSvg('read');
+  for (const r of readComics) {
+    if (r.startsWith(path + '/')) return folderIconSvg('read-ancestor');
   }
   return folderIconSvg('plain');
 }
@@ -1528,6 +1573,17 @@ async function loadFolderImages(dirHandle, row, dirPath = '') {
   currentDirHandle = dirHandle;
   currentDirPath = dirPath;
   setUrlParam(dirPath);
+
+  // ── READ TIMER: mark as read after 3 s of staying on this folder ──
+  if (readTimer) clearTimeout(readTimer);
+  readTimer = setTimeout(async () => {
+    if (currentDirPath === dirPath && !readComics.has(dirPath)) {
+      readComics.add(dirPath);
+      await saveMetadata();
+      updateFavoriteButton(dirPath);
+      updateTreeIcons();
+    }
+  }, 3000);
   const savedTags = await loadSavedTags(dirHandle.name);
   showInfoPanel(dirHandle.name, fileHandles.length, totalSize, savedTags, dirPath);
 
@@ -1655,6 +1711,7 @@ async function renderFromHandles(fileHandles) {
 }
 
 function clearContent() {
+  if (readTimer) { clearTimeout(readTimer); readTimer = null; }
   grid.innerHTML = '';
   strip.innerHTML = '';
   grid.style.display = 'none';
