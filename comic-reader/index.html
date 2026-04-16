@@ -952,8 +952,9 @@ const ocrStatus    = document.getElementById('ocr-status');
 // Stored in comic-reader-metadata.json at the root of the opened folder.
 // Schema: { "favorites": [...paths], "read": [...paths] }
 
-let favorites = new Set();
-let readComics = new Set();
+let favorites    = new Set();
+let readComics   = new Set();
+let trashedComics = new Set();
 
 async function loadMetadata() {
   favorites  = new Set();
@@ -965,6 +966,7 @@ async function loadMetadata() {
     const data = JSON.parse(await file.text());
     if (Array.isArray(data.favorites)) data.favorites.forEach(p => favorites.add(p));
     if (Array.isArray(data.read))      data.read.forEach(p => readComics.add(p));
+    if (Array.isArray(data.trashed))   data.trashed.forEach(p => trashedComics.add(p));
   } catch { /* file doesn't exist yet — that's fine */ }
 }
 
@@ -981,6 +983,7 @@ async function saveMetadata() {
     await writable.write(JSON.stringify({
       favorites: [...favorites],
       read:      [...readComics],
+      trashed:   [...trashedComics],
     }, null, 2));
     await writable.close();
   } catch (err) {
@@ -1857,6 +1860,10 @@ async function trashCurrentFolder() {
 
     await removeDir(srcParent, currentDirHandle.name);
 
+    // Record in metadata
+    trashedComics.add(currentDirPath);
+    await saveMetadata();
+
     // Invalidate search cache
     allEntries = null;
 
@@ -1911,6 +1918,10 @@ async function trashCurrentFile() {
 
     // Remove original
     await currentDirHandle.removeEntry(item.name);
+
+    // Record in metadata (store as dirPath/filename)
+    trashedComics.add(`${currentDirPath}/${item.name}`);
+    await saveMetadata();
 
     // Remove from lbItems and currentFileHandles
     lbItems.splice(lbIndex, 1);
