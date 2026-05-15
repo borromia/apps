@@ -427,6 +427,79 @@
     max-width: 300px;
   }
 
+  /* ── GRID SORT ── */
+  .grid-sort-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  #btn-grid-sort {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.06);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 12px;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+  }
+  #btn-grid-sort:hover { background: rgba(255,255,255,0.12); color: var(--text); }
+  #btn-grid-sort.active { color: var(--accent); border-color: rgba(10,132,255,0.35); background: rgba(10,132,255,0.1); }
+  #btn-grid-sort-dir {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.06);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+  #btn-grid-sort-dir:hover { background: rgba(255,255,255,0.12); color: var(--text); }
+  #btn-grid-sort-dir.active { color: var(--accent); border-color: rgba(10,132,255,0.35); background: rgba(10,132,255,0.1); }
+  #grid-sort-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 200;
+    min-width: 150px;
+    background: rgba(28,28,34,0.96);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    padding: 5px;
+    flex-direction: column;
+    gap: 1px;
+  }
+  #grid-sort-menu.open { display: flex; }
+  .gsm-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-muted);
+    transition: background 0.1s, color 0.1s;
+    user-select: none;
+  }
+  .gsm-item:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+  .gsm-item.active { color: var(--accent); background: rgba(10,132,255,0.12); }
+  .gsm-item svg { flex-shrink: 0; opacity: 0.7; }
+  .gsm-item.active svg { opacity: 1; }
+
   /* ── ZOOM SLIDER ── */
   .zoom-control {
     display: flex;
@@ -756,6 +829,37 @@
     <input type="range" id="speed-slider" min="0.5" max="5" value="1" step="0.25" title="Video speed" />
     <span id="speed-label" style="font-size:11px;color:var(--text-muted);min-width:28px;">1×</span>
   </div>
+
+  <div class="tb-sep"></div>
+
+  <!-- GRID SORT -->
+  <div class="grid-sort-wrap">
+    <button id="btn-grid-sort" title="Sort grid">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
+      <span id="grid-sort-label">Name</span>
+    </button>
+    <div id="grid-sort-menu">
+      <div class="gsm-item active" data-sort="name">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+        Name
+      </div>
+      <div class="gsm-item" data-sort="size">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Size
+      </div>
+      <div class="gsm-item" data-sort="modified">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Last Modified
+      </div>
+      <div class="gsm-item" data-sort="created">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Date Created
+      </div>
+    </div>
+  </div>
+  <button id="btn-grid-sort-dir" title="Toggle sort direction">
+    <svg id="sort-dir-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+  </button>
 
   <div class="tb-sep"></div>
 
@@ -1407,7 +1511,7 @@ async function setMode(m) {
   mode = m;
   btnTile.classList.toggle('active', m === 'tile');
   btnComic.classList.toggle('active', m === 'comic');
-  if (currentFileHandles.length) await renderFromHandles(currentFileHandles);
+  if (currentFileHandles.length) await renderFromHandles(await sortedHandles(currentFileHandles));
 }
 
 // ── FULLSCREEN ────────────────────────────────────────────────────────────────
@@ -1606,7 +1710,7 @@ async function loadFolderImages(dirHandle, row, dirPath = '') {
   const savedTags = await loadSavedTags(dirHandle.name);
   showInfoPanel(dirHandle.name, fileHandles.length, totalSize, savedTags, dirPath);
 
-  if (fileHandles.length) await renderFromHandles(fileHandles);
+  if (fileHandles.length) await renderFromHandles(await sortedHandles(fileHandles));
   else clearContent();
 }
 
@@ -1797,6 +1901,97 @@ function clearContent() {
   infoPanel.style.display = 'none';
   setUrlParam('');
 }
+
+// ── GRID SORT ─────────────────────────────────────────────────────────────────
+const btnGridSort    = document.getElementById('btn-grid-sort');
+const btnGridSortDir = document.getElementById('btn-grid-sort-dir');
+const gridSortMenu   = document.getElementById('grid-sort-menu');
+const gridSortLabel  = document.getElementById('grid-sort-label');
+const sortDirIcon    = document.getElementById('sort-dir-icon');
+
+let gridSortKey = 'name';   // 'name' | 'size' | 'modified' | 'created'
+let gridSortAsc = true;
+
+const SORT_LABELS = { name: 'Name', size: 'Size', modified: 'Modified', created: 'Created' };
+
+// Fetch file metadata for all handles, caching on the handle object itself
+async function getFileMeta(handle) {
+  if (!handle._fileMeta) {
+    const f = await handle.getFile();
+    handle._fileMeta = { size: f.size, modified: f.lastModified };
+    // lastModified is the only date browsers expose; we use it for both
+    // "modified" and "created" since File API doesn't expose birthtime
+    handle._fileMeta.created = f.lastModified;
+  }
+  return handle._fileMeta;
+}
+
+async function sortedHandles(handles) {
+  if (gridSortKey === 'name') {
+    const sorted = [...handles].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+    );
+    return gridSortAsc ? sorted : sorted.reverse();
+  }
+
+  // For size/modified/created we need file metadata
+  const withMeta = await Promise.all(handles.map(async h => ({ h, meta: await getFileMeta(h) })));
+  withMeta.sort((a, b) => {
+    let diff = 0;
+    if (gridSortKey === 'size')     diff = a.meta.size     - b.meta.size;
+    if (gridSortKey === 'modified') diff = a.meta.modified - b.meta.modified;
+    if (gridSortKey === 'created')  diff = a.meta.created  - b.meta.created;
+    if (diff === 0) diff = a.h.name.localeCompare(b.h.name, undefined, { numeric: true });
+    return gridSortAsc ? diff : -diff;
+  });
+  return withMeta.map(x => x.h);
+}
+
+function updateSortUI() {
+  gridSortLabel.textContent = SORT_LABELS[gridSortKey];
+  btnGridSort.classList.toggle('active', gridSortKey !== 'name');
+  btnGridSortDir.classList.toggle('active', !gridSortAsc);
+  // Flip the chevron: up = ascending, down = descending
+  sortDirIcon.setAttribute('points', gridSortAsc ? '18 15 12 9 6 15' : '6 9 12 15 18 9');
+  document.querySelectorAll('.gsm-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.sort === gridSortKey);
+  });
+}
+
+// Toggle menu open/close
+btnGridSort.addEventListener('click', (e) => {
+  e.stopPropagation();
+  gridSortMenu.classList.toggle('open');
+});
+
+// Close menu when clicking outside
+document.addEventListener('click', () => gridSortMenu.classList.remove('open'));
+gridSortMenu.addEventListener('click', e => e.stopPropagation());
+
+// Menu item selection
+gridSortMenu.querySelectorAll('.gsm-item').forEach(item => {
+  item.addEventListener('click', async () => {
+    gridSortKey = item.dataset.sort;
+    gridSortMenu.classList.remove('open');
+    updateSortUI();
+    if (currentFileHandles.length) {
+      const sorted = await sortedHandles(currentFileHandles);
+      await renderFromHandles(sorted);
+    }
+  });
+});
+
+// Direction toggle
+btnGridSortDir.addEventListener('click', async () => {
+  gridSortAsc = !gridSortAsc;
+  updateSortUI();
+  if (currentFileHandles.length) {
+    const sorted = await sortedHandles(currentFileHandles);
+    await renderFromHandles(sorted);
+  }
+});
+
+updateSortUI();
 
 // ── ZOOM ──────────────────────────────────────────────────────────────────────
 const zoomSlider = document.getElementById('zoom-slider');
