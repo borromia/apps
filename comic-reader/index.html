@@ -1720,8 +1720,11 @@ function setActiveRow(row) {
 }
 
 // ── VIDEO LAZY LOADING ────────────────────────────────────────────────────────
-// Tracks the active IntersectionObserver for video lazy-loading so we can
-// disconnect it when the view is rebuilt.
+// Blob URLs are created on-demand when a video scrolls into view and revoked
+// immediately when it scrolls out — so only visible videos hold memory.
+// Each <video> element carries its FileSystemFileHandle in _fileHandle and
+// its current live blob URL (if any) in _blobUrl.
+
 let videoLazyObserver = null;
 
 function disconnectVideoObserver() {
@@ -1731,10 +1734,16 @@ function disconnectVideoObserver() {
   }
 }
 
-// Attach an IntersectionObserver to all <video data-src> elements inside
-// `root` (a scrollable container).  When a video enters the viewport its
-// src is set from data-src; when it leaves src is removed so the browser
-// can release the decode pipeline.
+function revokeVideoBlobIfAny(vid) {
+  if (vid._blobUrl) {
+    vid.pause();
+    vid.removeAttribute('src');
+    vid.load(); // release decoder
+    URL.revokeObjectURL(vid._blobUrl);
+    vid._blobUrl = null;
+  }
+}
+
 function observeVideos(scrollRoot) {
   disconnectVideoObserver();
 
@@ -1742,26 +1751,30 @@ function observeVideos(scrollRoot) {
     for (const entry of entries) {
       const vid = entry.target;
       if (entry.isIntersecting) {
-        if (!vid.src && vid.dataset.src) {
-          vid.src = vid.dataset.src;
-          vid.playbackRate = videoSpeed;
-          vid.play().catch(() => {});
+        // Create blob on-demand only when entering view
+        if (!vid._blobUrl && vid._fileHandle) {
+          vid._fileHandle.getFile().then(file => {
+            // Guard: element may have been removed while the async call was in flight
+            if (!vid.isConnected) return;
+            const url = URL.createObjectURL(file);
+            vid._blobUrl = url;
+            vid.src = url;
+            vid.playbackRate = videoSpeed;
+            vid.play().catch(() => {});
+          });
         }
       } else {
-        if (vid.src) {
-          vid.pause();
-          vid.removeAttribute('src');
-          vid.load(); // reset decoder
-        }
+        // Revoke blob immediately when leaving view — frees memory
+        revokeVideoBlobIfAny(vid);
       }
     }
   }, {
     root: scrollRoot,
-    rootMargin: '200px 0px', // start loading a bit before they scroll into view
+    rootMargin: '200px 0px',
     threshold: 0,
   });
 
-  scrollRoot.querySelectorAll('video[data-src]').forEach(v => videoLazyObserver.observe(v));
+  scrollRoot.querySelectorAll('video[data-lazy]').forEach(v => videoLazyObserver.observe(v));
 }
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
@@ -1770,74 +1783,64 @@ async function renderFromHandles(fileHandles) {
   currentMediaEls = [];
   emptyState.style.display = 'none';
 
-  // Disconnect any previous lazy observer before clearing the DOM
+  // Disconnect observer and revoke any live video blobs before clearing DOM
   disconnectVideoObserver();
+  [...grid.querySelectorAll('video[data-lazy]'), ...strip.querySelectorAll('video[data-lazy]')]
+    .forEach(revokeVideoBlobIfAny);
 
-  // revoke old blobs
-  [...grid.querySelectorAll('img,video'), ...strip.querySelectorAll('img,video,iframe')]
-    .forEach(el => {
-      const blobUrl = el.dataset.src || (el.src && el.src.startsWith('blob:') ? el.src : null);
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
-    });
+  // Revoke blobs for non-video elements (images, iframes, pdfs)
+  [...grid.querySelectorAll('img,iframe'), ...strip.querySelectorAll('img,iframe')]
+    .forEach(el => { if (el.src && el.src.startsWith('blob:')) URL.revokeObjectURL(el.src); });
 
   grid.innerHTML = '';
   strip.innerHTML = '';
 
-  // create fresh blobs with type info
-  const items = await Promise.all(fileHandles.map(async h => {
-    const file = await h.getFile();
-    const url = URL.createObjectURL(file);
-    const name = h.name;
-    const type = VIDEO_EXT.test(name) ? 'video' : PDF_EXT.test(name) ? 'pdf' : 'image';
-    return { url, type, name, handle: h };
+  // Build a lightweight descriptor array — no blobs created yet
+  const items = fileHandles.map(h => ({
+    handle: h,
+    name: h.name,
+    type: VIDEO_EXT.test(h.name) ? 'video' : PDF_EXT.test(h.name) ? 'pdf' : 'image',
   }));
 
   if (mode === 'tile') {
     grid.style.display = 'grid';
     strip.style.display = 'none';
 
-    // collect image-only urls for lightbox (skip video/pdf)
-    const imageItems = items.filter(it => it.type === 'image');
-    const imageUrls  = imageItems.map(it => it.url);
-
     for (let i = 0; i < items.length; i++) {
-      const { url, type, name, handle } = items[i];
+      const { handle, type, name } = items[i];
       const tile = document.createElement('div');
       tile.className = 'tile';
 
       if (type === 'video') {
         const vid = document.createElement('video');
-        // Don't set src yet — the IntersectionObserver will do it when in view
-        vid.dataset.src = url;
-        vid.autoplay = true;
-        vid.loop = true;
-        vid.muted = true;
+        vid.dataset.lazy = '1';       // marker for the observer selector
+        vid._fileHandle = handle;     // handle stored; blob created on scroll-in
+        vid._blobUrl    = null;
+        vid.autoplay    = true;
+        vid.loop        = true;
+        vid.muted       = true;
         vid.playsInline = true;
         vid.style.pointerEvents = 'none';
         tile.appendChild(vid);
-        tile.addEventListener('click', () => {
-          const idx = items.findIndex(it => it.handle === handle);
-          if (idx !== -1) openLightbox(items, idx);
-        });
+        tile.addEventListener('click', () => openLightbox(items, i));
       } else if (type === 'pdf') {
+        // PDFs are typically few and small — create blob eagerly
         const icon = document.createElement('div');
         icon.className = 'pdf-icon';
         icon.innerHTML = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg><span>${name}</span>`;
         tile.appendChild(icon);
-        tile.addEventListener('click', () => {
-          const idx = items.findIndex(it => it.handle === handle);
-          if (idx !== -1) openLightbox(items, idx);
-        });
+        tile.addEventListener('click', () => openLightbox(items, i));
       } else {
+        // Images: create blob eagerly (they're decoded by the browser lazily via loading="lazy")
+        const file = await handle.getFile();
+        const url  = URL.createObjectURL(file);
+        items[i].url = url; // store so lightbox can use it
         const img = document.createElement('img');
-        img.src = url;
+        img.src     = url;
         img.loading = 'lazy';
-        img.alt = '';
+        img.alt     = '';
         tile.appendChild(img);
-        tile.addEventListener('click', () => {
-          const idx = items.findIndex(it => it.handle === handle);
-          if (idx !== -1) openLightbox(items, idx);
-        });
+        tile.addEventListener('click', () => openLightbox(items, i));
         attachTileTooltip(tile, img, handle, i + 1, items.length);
       }
 
@@ -1845,14 +1848,16 @@ async function renderFromHandles(fileHandles) {
       currentMediaEls.push(tile);
     }
 
-    // Start observing videos now that they're in the DOM
     observeVideos(content);
+
   } else {
     grid.style.display = 'none';
     strip.style.display = 'flex';
     const total = items.length;
 
-    items.forEach(({ url, type, name }, i) => {
+    for (let i = 0; i < items.length; i++) {
+      const { handle, type, name } = items[i];
+
       const sep = document.createElement('div');
       sep.className = 'page-sep';
       sep.textContent = `Page ${i + 1} / ${total}`;
@@ -1861,33 +1866,42 @@ async function renderFromHandles(fileHandles) {
       let el;
       if (type === 'video') {
         el = document.createElement('video');
-        // Don't set src yet — the IntersectionObserver will do it when in view
-        el.dataset.src = url;
-        el.controls = true;
-        el.loop = true;
-        el.autoplay = true;
-        el.muted = true;
-        el.playsInline = true;
+        el.dataset.lazy = '1';
+        el._fileHandle  = handle;
+        el._blobUrl     = null;
+        el.controls     = true;
+        el.loop         = true;
+        el.autoplay     = true;
+        el.muted        = true;
+        el.playsInline  = true;
         strip.appendChild(el);
       } else if (type === 'pdf') {
+        const file = await handle.getFile();
+        const url  = URL.createObjectURL(file);
+        items[i].url = url;
         el = document.createElement('iframe');
-        el.src = url;
+        el.src       = url;
         el.className = 'pdf-embed';
-        el.title = name;
+        el.title     = name;
         strip.appendChild(el);
       } else {
+        const file = await handle.getFile();
+        const url  = URL.createObjectURL(file);
+        items[i].url = url;
         el = document.createElement('img');
-        el.src = url;
+        el.src     = url;
         el.loading = 'lazy';
-        el.alt = `Page ${i + 1}`;
+        el.alt     = `Page ${i + 1}`;
         strip.appendChild(el);
       }
       currentMediaEls.push({ el, sep });
-    });
+    }
 
-    // Start observing videos now that they're in the DOM
     observeVideos(content);
   }
+
+  // Expose items array so the lightbox can reach blob URLs / handles
+  renderFromHandles._items = items;
 }
 
 function clearContent() {
@@ -2202,8 +2216,17 @@ async function trashCurrentFile() {
     const elEntry = currentMediaEls[lbIndex];
     if (elEntry) {
       if (mode === 'tile') {
+        // Unobserve and revoke any live video blob before removing
+        const vid = elEntry.querySelector('video[data-lazy]');
+        if (vid) { videoLazyObserver?.unobserve(vid); revokeVideoBlobIfAny(vid); }
+        // Revoke image blob if present
+        const img = elEntry.querySelector('img');
+        if (img && img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
         elEntry.remove(); // tile div
       } else {
+        const vid = elEntry.el;
+        if (vid.tagName === 'VIDEO') { videoLazyObserver?.unobserve(vid); revokeVideoBlobIfAny(vid); }
+        else if (vid.src && vid.src.startsWith('blob:')) URL.revokeObjectURL(vid.src);
         elEntry.el.remove();
         elEntry.sep.remove();
       }
