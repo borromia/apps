@@ -1615,15 +1615,66 @@ function setActiveRow(row) {
   row.classList.add('active');
 }
 
+// ── VIDEO LAZY LOADING ────────────────────────────────────────────────────────
+// Tracks the active IntersectionObserver for video lazy-loading so we can
+// disconnect it when the view is rebuilt.
+let videoLazyObserver = null;
+
+function disconnectVideoObserver() {
+  if (videoLazyObserver) {
+    videoLazyObserver.disconnect();
+    videoLazyObserver = null;
+  }
+}
+
+// Attach an IntersectionObserver to all <video data-src> elements inside
+// `root` (a scrollable container).  When a video enters the viewport its
+// src is set from data-src; when it leaves src is removed so the browser
+// can release the decode pipeline.
+function observeVideos(scrollRoot) {
+  disconnectVideoObserver();
+
+  videoLazyObserver = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      const vid = entry.target;
+      if (entry.isIntersecting) {
+        if (!vid.src && vid.dataset.src) {
+          vid.src = vid.dataset.src;
+          vid.playbackRate = videoSpeed;
+          vid.play().catch(() => {});
+        }
+      } else {
+        if (vid.src) {
+          vid.pause();
+          vid.removeAttribute('src');
+          vid.load(); // reset decoder
+        }
+      }
+    }
+  }, {
+    root: scrollRoot,
+    rootMargin: '200px 0px', // start loading a bit before they scroll into view
+    threshold: 0,
+  });
+
+  scrollRoot.querySelectorAll('video[data-src]').forEach(v => videoLazyObserver.observe(v));
+}
+
 // ── RENDER ────────────────────────────────────────────────────────────────────
 async function renderFromHandles(fileHandles) {
   currentFileHandles = fileHandles;
   currentMediaEls = [];
   emptyState.style.display = 'none';
 
+  // Disconnect any previous lazy observer before clearing the DOM
+  disconnectVideoObserver();
+
   // revoke old blobs
   [...grid.querySelectorAll('img,video'), ...strip.querySelectorAll('img,video,iframe')]
-    .forEach(el => { if (el.src && el.src.startsWith('blob:')) URL.revokeObjectURL(el.src); });
+    .forEach(el => {
+      const blobUrl = el.dataset.src || (el.src && el.src.startsWith('blob:') ? el.src : null);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    });
 
   grid.innerHTML = '';
   strip.innerHTML = '';
@@ -1652,12 +1703,12 @@ async function renderFromHandles(fileHandles) {
 
       if (type === 'video') {
         const vid = document.createElement('video');
-        vid.src = url;
+        // Don't set src yet — the IntersectionObserver will do it when in view
+        vid.dataset.src = url;
         vid.autoplay = true;
         vid.loop = true;
         vid.muted = true;
         vid.playsInline = true;
-        vid.playbackRate = videoSpeed;
         vid.style.pointerEvents = 'none';
         tile.appendChild(vid);
         tile.addEventListener('click', () => {
@@ -1689,6 +1740,9 @@ async function renderFromHandles(fileHandles) {
       grid.appendChild(tile);
       currentMediaEls.push(tile);
     }
+
+    // Start observing videos now that they're in the DOM
+    observeVideos(content);
   } else {
     grid.style.display = 'none';
     strip.style.display = 'flex';
@@ -1703,13 +1757,13 @@ async function renderFromHandles(fileHandles) {
       let el;
       if (type === 'video') {
         el = document.createElement('video');
-        el.src = url;
+        // Don't set src yet — the IntersectionObserver will do it when in view
+        el.dataset.src = url;
         el.controls = true;
         el.loop = true;
         el.autoplay = true;
         el.muted = true;
         el.playsInline = true;
-        el.playbackRate = videoSpeed;
         strip.appendChild(el);
       } else if (type === 'pdf') {
         el = document.createElement('iframe');
@@ -1726,11 +1780,15 @@ async function renderFromHandles(fileHandles) {
       }
       currentMediaEls.push({ el, sep });
     });
+
+    // Start observing videos now that they're in the DOM
+    observeVideos(content);
   }
 }
 
 function clearContent() {
   if (readTimer) { clearTimeout(readTimer); readTimer = null; }
+  disconnectVideoObserver();
   grid.innerHTML = '';
   strip.innerHTML = '';
   grid.style.display = 'none';
@@ -1760,8 +1818,10 @@ let videoSpeed = 1;
 function applySpeed(val) {
   videoSpeed = parseFloat(val);
   speedLabel.textContent = videoSpeed + '×';
-  // update all live video elements
-  document.querySelectorAll('video').forEach(v => { v.playbackRate = videoSpeed; });
+  // update only live (in-view) video elements that have a src loaded
+  document.querySelectorAll('video').forEach(v => {
+    if (v.src) v.playbackRate = videoSpeed;
+  });
 }
 
 speedSlider.addEventListener('input', () => applySpeed(speedSlider.value));
