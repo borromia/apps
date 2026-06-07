@@ -648,6 +648,77 @@
   /* ── FULLSCREEN ── */
   :fullscreen #topbar { display: flex; }
   :fullscreen body { height: 100vh; }
+
+  /* ── REMOTE SOURCE BADGE ── */
+  #remote-badge {
+    display: none; align-items: center; gap: 5px;
+    padding: 3px 9px; border-radius: 6px;
+    font-size: 11px; font-weight: 500;
+    background: rgba(10,132,255,0.15); color: var(--accent);
+    border: 1px solid rgba(10,132,255,0.3);
+    white-space: nowrap; flex-shrink: 0; cursor: default;
+    max-width: 200px; overflow: hidden; text-overflow: ellipsis;
+  }
+  #remote-badge.visible { display: flex; }
+  #remote-badge .rb-close {
+    flex-shrink: 0; cursor: pointer; opacity: 0.6; line-height: 0;
+    padding: 2px; border-radius: 3px; transition: opacity 0.1s;
+  }
+  #remote-badge .rb-close:hover { opacity: 1; }
+
+  /* ── URL MODAL ── */
+  #url-modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 9000;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+    align-items: center; justify-content: center;
+  }
+  #url-modal-overlay.open { display: flex; }
+  #url-modal {
+    background: rgba(30,30,36,0.98);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+    padding: 24px 24px 20px;
+    width: min(480px, calc(100vw - 32px));
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  #url-modal h3 {
+    font-size: 15px; font-weight: 600; color: var(--text); margin: 0;
+    display: flex; align-items: center; gap: 8px;
+  }
+  #url-modal p { font-size: 12px; color: var(--text-muted); margin: 0; line-height: 1.5; }
+  #url-modal-input {
+    width: 100%; padding: 9px 12px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06); color: var(--text);
+    font-size: 13px; font-family: inherit; outline: none;
+    transition: border-color 0.15s;
+  }
+  #url-modal-input:focus { border-color: var(--accent); }
+  #url-modal-input.error { border-color: #ff6b6b; }
+  #url-modal-err { font-size: 11px; color: #ff6b6b; display: none; }
+  #url-modal-err.visible { display: block; }
+  .url-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .url-modal-actions button {
+    padding: 7px 16px; border-radius: 8px; font-size: 13px;
+    cursor: pointer; border: 1px solid var(--border);
+    font-family: inherit; transition: background 0.15s;
+  }
+  #url-modal-cancel { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+  #url-modal-cancel:hover { background: rgba(255,255,255,0.12); }
+  #url-modal-ok {
+    background: var(--accent); color: #fff; border-color: transparent;
+    font-weight: 500;
+  }
+  #url-modal-ok:hover { background: #1a91ff; }
+  #url-modal-ok:disabled { opacity: 0.5; cursor: not-allowed; }
+  #url-modal-spinner {
+    display: none; width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff; border-radius: 50%;
+    animation: spin 0.7s linear infinite; flex-shrink: 0;
+  }
+  #url-modal-spinner.visible { display: inline-block; }
 </style>
 </head>
 <body>
@@ -661,6 +732,19 @@
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
     Open Folder
   </button>
+
+  <button class="tb-btn" id="btn-open-url" title="Open remote nginx directory listing">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    Open URL
+  </button>
+
+  <div id="remote-badge" title="Remote source">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    <span id="remote-badge-text"></span>
+    <span class="rb-close" id="remote-badge-close" title="Close remote source">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </span>
+  </div>
 
   <span id="current-path"></span>
   <div class="tb-spacer"></div>
@@ -855,6 +939,24 @@
 
 <div id="tile-tooltip"></div>
 
+<!-- URL MODAL -->
+<div id="url-modal-overlay">
+  <div id="url-modal" role="dialog" aria-modal="true" aria-labelledby="url-modal-title">
+    <h3 id="url-modal-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      Open Remote Directory
+    </h3>
+    <p>Enter the URL of an nginx auto-index directory listing. The URL must end with <code>/</code>.</p>
+    <input id="url-modal-input" type="url" placeholder="https://example.com/shared/" autocomplete="url" spellcheck="false" />
+    <div id="url-modal-err"></div>
+    <div class="url-modal-actions">
+      <span id="url-modal-spinner"></span>
+      <button id="url-modal-cancel">Cancel</button>
+      <button id="url-modal-ok">Open</button>
+    </div>
+  </div>
+</div>
+
 
 <script>
 const { get, set } = idbKeyval;
@@ -872,6 +974,119 @@ let detailIndex       = 0;      // which video is open in detail view
 let sortByCount = new URL(location.href).searchParams.get('sort') === 'count';
 let sortBySize  = new URL(location.href).searchParams.get('sort') === 'size';
 if (sortBySize) sortByCount = false;
+
+// ── REMOTE MODE ───────────────────────────────────────────────────────────────
+// When a remote nginx directory is loaded, remoteRoot holds the base URL
+// and all file/dir handles are RemoteFileHandle / RemoteDirHandle instances.
+let remoteRoot = null;  // base URL string, e.g. "https://host/shared/"
+
+// Normalize a URL to always end with /
+function normalizeUrl(u) {
+  return u.endsWith('/') ? u : u + '/';
+}
+
+// Parse nginx auto-index HTML. Returns [{name, href, isDir, size, date}]
+// Works with both the raw <pre> block and plain nginx listings.
+function parseNginxListing(html, baseUrl) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  // Prefer the raw nginx <pre> embedded inside #nginx-listing (custom theme)
+  const pre = doc.querySelector('#nginx-listing pre') || doc.querySelector('pre');
+  const results = [];
+
+  if (pre) {
+    // Each line: <a href="...">display</a>  DD-Mon-YYYY HH:MM  size_or_dash
+    const anchors = pre.querySelectorAll('a');
+    anchors.forEach(a => {
+      const href = a.getAttribute('href');
+      if (!href || href === '../' || href === './') return;
+      const isDir = href.endsWith('/');
+      const name = decodeURIComponent(isDir ? href.slice(0, -1) : href);
+      // parse size from text after the anchor
+      let size = 0;
+      let dateTs = 0;
+      const lineText = a.parentNode ? a.parentNode.textContent : '';
+      const afterHref = lineText.slice(lineText.indexOf(a.textContent) + a.textContent.length).trim();
+      // format: "DD-Mon-YYYY HH:MM  12345678"
+      const m = afterHref.match(/(\d{2}-\w{3}-\d{4}\s+\d{2}:\d{2})\s+([\d-]+)/);
+      if (m) {
+        dateTs = new Date(m[1]).getTime() || 0;
+        size = m[2] === '-' ? 0 : parseInt(m[2], 10) || 0;
+      }
+      results.push({ name, href: normalizeUrl(baseUrl) + href, isDir, size, date: dateTs });
+    });
+  }
+  return results;
+}
+
+// Remote directory handle — mirrors FileSystemDirectoryHandle API
+class RemoteDirHandle {
+  constructor(url, name) {
+    this.url  = normalizeUrl(url);
+    this.name = name;
+    this.kind = 'directory';
+    this._entries = null; // cached [{name,href,isDir,size,date}]
+  }
+  async _load() {
+    if (this._entries) return;
+    const resp = await fetch(this.url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} fetching ${this.url}`);
+    const html = await resp.text();
+    this._entries = parseNginxListing(html, this.url);
+  }
+  async *values() {
+    await this._load();
+    for (const e of this._entries) {
+      if (e.isDir) {
+        yield new RemoteDirHandle(e.href, e.name);
+      } else {
+        yield new RemoteFileHandle(e.href, e.name, e.size, e.date);
+      }
+    }
+  }
+  async getDirectoryHandle(name) {
+    await this._load();
+    const e = this._entries.find(x => x.isDir && x.name === name);
+    if (!e) throw new Error(`Dir not found: ${name}`);
+    return new RemoteDirHandle(e.href, e.name);
+  }
+  // Stub — remote dirs don't support metadata file or size refresh
+  async getFileHandle() { throw new Error('Not supported in remote mode'); }
+  async queryPermission() { return 'granted'; }
+  async requestPermission() { return 'granted'; }
+}
+
+// Remote file handle — mirrors FileSystemFileHandle API
+class RemoteFileHandle {
+  constructor(url, name, size, dateTs) {
+    this.url   = url;
+    this.name  = name;
+    this.kind  = 'file';
+    this._size = size || 0;
+    this._date = dateTs || 0;
+    this._remote = true;  // flag for detection
+  }
+  async getFile() {
+    // Return a lightweight object that quacks like a File
+    return {
+      name:         this.name,
+      size:         this._size,
+      lastModified: this._date,
+      type:         this._mimeType(),
+      _remoteUrl:   this.url,
+    };
+  }
+  _mimeType() {
+    const ext = this.name.split('.').pop().toLowerCase();
+    const map = { mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
+                  mkv: 'video/x-matroska', avi: 'video/x-msvideo', m4v: 'video/mp4',
+                  ogv: 'video/ogg' };
+    return map[ext] || 'video/mp4';
+  }
+}
+
+function isRemoteHandle(h) { return h instanceof RemoteFileHandle || h instanceof RemoteDirHandle; }
 
 // VR projection: 'NONE' | '360' | '360_LR' | '360_TB' | '180' | '180_LR' | '360_CUBE'
 let vrProjection = 'NONE';
@@ -1034,6 +1249,8 @@ btnOpen.addEventListener('click', async () => {
   try {
     const handle = await window.showDirectoryPicker({ mode: 'read' });
     rootHandle = handle;
+    remoteRoot = null;
+    document.getElementById('remote-badge').classList.remove('visible');
     await set('videoPlayerDir', handle);
     pathLabel.textContent = handle.name;
     treeEl.innerHTML = '';
@@ -1050,6 +1267,100 @@ btnOpen.addEventListener('click', async () => {
   } catch (e) { if (e.name !== 'AbortError') console.error(e); }
 });
 
+// ── OPEN REMOTE URL ───────────────────────────────────────────────────────────
+async function openRemoteDir(url) {
+  url = normalizeUrl(url.trim());
+  const handle = new RemoteDirHandle(url, new URL(url).pathname.replace(/\/$/, '').split('/').pop() || url);
+  // Eagerly load to validate
+  await handle._load();
+
+  // Switch to remote mode — clear any local state
+  rootHandle = null;
+  remoteRoot = url;
+  await set('videoPlayerDir', null);
+
+  pathLabel.textContent = '';
+  const badge = document.getElementById('remote-badge');
+  document.getElementById('remote-badge-text').textContent = new URL(url).hostname + new URL(url).pathname;
+  badge.classList.add('visible');
+
+  treeEl.innerHTML = '<div style="padding:16px 12px;color:var(--text-muted);font-size:12px;display:flex;align-items:center;gap:8px;"><span style="width:12px;height:12px;border:2px solid rgba(255,255,255,0.2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;flex-shrink:0"></span>Loading…</div>';
+  emptyTree.style.display = 'none';
+  allEntries = null;
+  searchInput.value = '';
+  searchClear.classList.remove('visible');
+  sizeMetaCache = null;
+  updateSizeSortBtn();
+  favorites = new Set(); trashedItems = new Set();
+
+  await buildTree(treeEl, handle, 0);
+  clearContent();
+}
+
+// URL modal wiring
+const urlModalOverlay = document.getElementById('url-modal-overlay');
+const urlModalInput   = document.getElementById('url-modal-input');
+const urlModalErr     = document.getElementById('url-modal-err');
+const urlModalOk      = document.getElementById('url-modal-ok');
+const urlModalCancel  = document.getElementById('url-modal-cancel');
+const urlModalSpinner = document.getElementById('url-modal-spinner');
+
+function openUrlModal() {
+  urlModalInput.value = '';
+  urlModalInput.classList.remove('error');
+  urlModalErr.classList.remove('visible');
+  urlModalErr.textContent = '';
+  urlModalOk.disabled = false;
+  urlModalSpinner.classList.remove('visible');
+  urlModalOverlay.classList.add('open');
+  setTimeout(() => urlModalInput.focus(), 60);
+}
+function closeUrlModal() { urlModalOverlay.classList.remove('open'); }
+
+document.getElementById('btn-open-url').addEventListener('click', openUrlModal);
+urlModalCancel.addEventListener('click', closeUrlModal);
+urlModalOverlay.addEventListener('click', e => { if (e.target === urlModalOverlay) closeUrlModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && urlModalOverlay.classList.contains('open')) closeUrlModal(); });
+
+urlModalInput.addEventListener('keydown', e => { if (e.key === 'Enter') urlModalOk.click(); });
+
+urlModalOk.addEventListener('click', async () => {
+  const val = urlModalInput.value.trim();
+  if (!val) { showUrlError('Please enter a URL.'); return; }
+  let url;
+  try { url = new URL(val); } catch { showUrlError('Invalid URL.'); return; }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') { showUrlError('Only http:// and https:// URLs are supported.'); return; }
+
+  urlModalOk.disabled = true;
+  urlModalSpinner.classList.add('visible');
+  urlModalErr.classList.remove('visible');
+  urlModalInput.classList.remove('error');
+  try {
+    await openRemoteDir(val);
+    closeUrlModal();
+  } catch (err) {
+    showUrlError('Could not load directory: ' + err.message);
+  } finally {
+    urlModalOk.disabled = false;
+    urlModalSpinner.classList.remove('visible');
+  }
+});
+
+function showUrlError(msg) {
+  urlModalErr.textContent = msg;
+  urlModalErr.classList.add('visible');
+  urlModalInput.classList.add('error');
+}
+
+document.getElementById('remote-badge-close').addEventListener('click', () => {
+  remoteRoot = null;
+  document.getElementById('remote-badge').classList.remove('visible');
+  treeEl.innerHTML = '';
+  emptyTree.style.display = 'block';
+  emptyTree.textContent = 'Open a folder to begin';
+  clearContent();
+});
+
 // ── FOLDER SORT (sidebar) ─────────────────────────────────────────────────────
 const btnSort        = document.getElementById('btn-sort');
 const btnSortSize    = document.getElementById('btn-sort-size');
@@ -1063,7 +1374,8 @@ btnSort.addEventListener('click', async () => {
   btnSort.classList.toggle('active', sortByCount);
   updateSizeSortBtn();
   setUrlParam(currentDirPath);
-  if (rootHandle) { treeEl.innerHTML = ''; await buildTree(treeEl, rootHandle, 0); if (currentDirPath) await expandTreePath(currentDirPath, false); updateTreeIcons(); }
+  const activeRoot = rootHandle || (remoteRoot ? new RemoteDirHandle(remoteRoot, '') : null);
+  if (activeRoot) { treeEl.innerHTML = ''; await buildTree(treeEl, activeRoot, 0); if (currentDirPath) await expandTreePath(currentDirPath, false); updateTreeIcons(); }
 });
 btnSortSize.addEventListener('click', async () => {
   if (!sizeMetaCache) return;
@@ -1072,7 +1384,8 @@ btnSortSize.addEventListener('click', async () => {
   btnSort.classList.toggle('active', sortByCount);
   updateSizeSortBtn();
   setUrlParam(currentDirPath);
-  if (rootHandle) { treeEl.innerHTML = ''; await buildTree(treeEl, rootHandle, 0); if (currentDirPath) await expandTreePath(currentDirPath, false); updateTreeIcons(); }
+  const activeRoot = rootHandle || (remoteRoot ? new RemoteDirHandle(remoteRoot, '') : null);
+  if (activeRoot) { treeEl.innerHTML = ''; await buildTree(treeEl, activeRoot, 0); if (currentDirPath) await expandTreePath(currentDirPath, false); updateTreeIcons(); }
 });
 btnRefreshMeta.addEventListener('click', async () => {
   if (!rootHandle) return;
@@ -1133,8 +1446,9 @@ function highlight(name, query) {
 }
 async function runSearch(query) {
   treeEl.innerHTML = '';
-  if (!query) { allEntries = null; await buildTree(treeEl, rootHandle, 0); return; }
-  if (!allEntries) allEntries = await collectAll(rootHandle);
+  const activeRoot = rootHandle || (remoteRoot ? new RemoteDirHandle(remoteRoot, remoteRoot) : null);
+  if (!query) { allEntries = null; if (activeRoot) await buildTree(treeEl, activeRoot, 0); return; }
+  if (!allEntries) allEntries = await collectAll(activeRoot);
   const q = query.toLowerCase();
   const matches = allEntries.filter(({ entry }) => entry.name.toLowerCase().includes(q));
   if (!matches.length) { treeEl.innerHTML = '<div id="search-empty">No results</div>'; return; }
@@ -1156,12 +1470,12 @@ searchInput.addEventListener('input', () => {
   searchClear.classList.toggle('visible', q.length > 0);
   if (!q) allEntries = null;
   clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(() => { if (rootHandle) runSearch(q); }, 200);
+  searchDebounce = setTimeout(() => { if (rootHandle || remoteRoot) runSearch(q); }, 200);
 });
 searchClear.addEventListener('click', () => {
   searchInput.value = ''; searchClear.classList.remove('visible');
   allEntries = null;
-  if (rootHandle) runSearch('');
+  if (rootHandle || remoteRoot) runSearch('');
   searchInput.focus();
 });
 
@@ -1312,7 +1626,11 @@ function showInfoPanelFor(name, count, size, dirPath) {
   infoSubtitle.textContent = parent ? `in ${parent}` : '';
   infoMeta.textContent = `${count} video${count !== 1 ? 's' : ''}  ·  ${formatBytes(size)}`;
   infoPanel.style.display = 'flex';
-  updateFavoriteButton(dirPath || name);
+  // Hide favourite/trash controls in remote mode (read-only)
+  const isRemote = !!remoteRoot;
+  btnFavorite.style.display = isRemote ? 'none' : '';
+  btnTrash.style.display    = isRemote ? 'none' : '';
+  if (!isRemote) updateFavoriteButton(dirPath || name);
 }
 
 function setActiveRow(row) {
@@ -1398,6 +1716,7 @@ function observeThumbs(scrollRoot) {
   thumbObserver = new IntersectionObserver((entries) => {
     for (const entry of entries) {
       const vid = entry.target;
+      if (vid._remote) continue; // remote videos already have src set
       if (entry.isIntersecting) {
         if (!vid._blobUrl && vid._fileHandle) {
           vid._fileHandle.getFile().then(file => {
@@ -1405,7 +1724,6 @@ function observeThumbs(scrollRoot) {
             const url = URL.createObjectURL(file);
             vid._blobUrl = url;
             vid.src = url;
-            // only play on hover — start paused
           });
         }
       } else {
@@ -1437,15 +1755,20 @@ async function renderGrid() {
     const thumb = document.createElement('div');
     thumb.className = 'vtile-thumb';
 
-    // lazy video thumbnail
+    // lazy video thumbnail (local) or direct src (remote)
     const vid = document.createElement('video');
     vid.dataset.thumb  = '1';
     vid._fileHandle    = handle;
     vid._blobUrl       = null;
     vid.muted          = true;
     vid.playsInline    = true;
-    vid.preload        = 'metadata'; // get poster frame
+    vid.preload        = 'metadata';
     vid.currentTime    = 2;
+    if (handle._remote) {
+      // Remote: set src directly, no blob needed
+      handle.getFile().then(f => { vid.src = f._remoteUrl; });
+      vid._remote = true;
+    }
     thumb.appendChild(vid);
 
     // play icon overlay
@@ -1545,14 +1868,24 @@ async function openDetailView(index) {
   // Destroy previous player and revoke blob
   destroyVjsPlayer();
 
-  // Create blob URL for the video file
+  // Create blob URL for the video file (local) or use remote URL directly
   const file = await handle.getFile();
-  const blobUrl = URL.createObjectURL(file);
-  window._vjsBlobUrl = blobUrl;
+  let srcUrl, srcType;
+  if (handle._remote) {
+    // Remote file — play directly from URL, no blob needed
+    srcUrl  = file._remoteUrl;
+    srcType = file.type || 'video/mp4';
+    if (window._vjsBlobUrl) { URL.revokeObjectURL(window._vjsBlobUrl); window._vjsBlobUrl = null; }
+  } else {
+    const blobUrl = URL.createObjectURL(file);
+    window._vjsBlobUrl = blobUrl;
+    srcUrl  = blobUrl;
+    srcType = file.type || 'video/mp4';
+  }
 
   // Update header
   detailTitle.textContent = handle.name;
-  detailMeta.textContent  = formatBytes(file.size) + '  ·  ' + formatDate(file.lastModified);
+  detailMeta.textContent  = formatBytes(file.size) + (file.lastModified ? '  ·  ' + formatDate(file.lastModified) : '');
   detailPos.textContent   = `${index + 1} / ${currentFileHandles.length}`;
   dnPrev.disabled = index === 0;
   dnNext.disabled = index === currentFileHandles.length - 1;
@@ -1589,7 +1922,7 @@ async function openDetailView(index) {
     }
   }
 
-  vjsPlayer.src({ src: blobUrl, type: file.type || 'video/mp4' });
+  vjsPlayer.src({ src: srcUrl, type: srcType });
 }
 
 // ── PROJECTION PICKER ─────────────────────────────────────────────────────────
@@ -1680,6 +2013,7 @@ async function getDirHandle(root, pathStr) {
 
 async function trashCurrentFolder() {
   if (!currentDirHandle || !rootHandle || !currentDirPath) return;
+  if (remoteRoot) return; // read-only in remote mode
   btnTrash.disabled = true;
   try {
     const perm = await rootHandle.requestPermission({ mode: 'readwrite' });
@@ -1833,7 +2167,9 @@ async function getSortedSiblings(parentHandle) {
 }
 
 async function navigateSibling(direction) {
-  if (!currentDirHandle || !rootHandle || !currentDirPath) return;
+  if (!currentDirHandle || !currentDirPath) return;
+  if (remoteRoot) return; // not supported in remote mode
+  if (!rootHandle) return;
   const pathParts = currentDirPath.split('/').filter(Boolean);
   let parentHandle = rootHandle;
   if (pathParts.length > 1) parentHandle = await getDirHandle(rootHandle, pathParts.slice(0, -1).join('/'));
