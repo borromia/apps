@@ -1,0 +1,1864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Video Player</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%230a84ff'/%3E%3Cstop offset='100%25' stop-color='%2330d158'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='7' fill='url(%23g)'/%3E%3Cpolygon points='11,8 26,16 11,24' fill='rgba(255,255,255,0.95)'/%3E%3C/svg%3E" />
+
+<!-- idb-keyval for folder persistence -->
+<script src="https://unpkg.com/idb-keyval@6/dist/umd.js"></script>
+
+<!-- Video.js 8 -->
+<link href="https://vjs.zencdn.net/8.23.4/video-js.min.css" rel="stylesheet" />
+<script src="https://vjs.zencdn.net/8.23.4/video.min.js"></script>
+
+<!-- videojs-vr (depends on video.js + three.js bundled inside) -->
+<script src="https://unpkg.com/videojs-vr@2.0.0/dist/videojs-vr.min.js"></script>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #1a1a1e;
+    --surface: rgba(40,40,46,0.75);
+    --surface-solid: #28282e;
+    --border: rgba(255,255,255,0.08);
+    --accent: #0a84ff;
+    --accent2: #30d158;
+    --text: #f0f0f5;
+    --text-muted: #8e8e9a;
+    --topbar-h: 52px;
+    --sidebar-w: 260px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+    font-size: 13px;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    height: var(--topbar-h);
+    min-height: var(--topbar-h);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 16px;
+    background: rgba(28,28,32,0.92);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+    overflow: hidden;
+  }
+
+  #topbar .logo {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text);
+    margin-right: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .tb-sep {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+  .tb-spacer { flex: 1; min-width: 0; }
+
+  .tb-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .tb-btn:hover { background: rgba(255,255,255,0.12); }
+  .tb-btn svg { flex-shrink: 0; }
+
+  #btn-open {
+    background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.07) 100%);
+    border: 1px solid rgba(255,255,255,0.22);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+    color: #fff;
+    font-weight: 500;
+  }
+  #btn-open:hover {
+    background: linear-gradient(135deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.13) 100%);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+
+  /* ── PROJECTION PICKER ── */
+  .proj-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  #btn-proj {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.06);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 12px;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+  #btn-proj:hover { background: rgba(255,255,255,0.12); color: var(--text); }
+  #btn-proj.vr-active { color: var(--accent2); border-color: rgba(48,209,88,0.35); background: rgba(48,209,88,0.1); }
+  #proj-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 300;
+    min-width: 170px;
+    background: rgba(28,28,34,0.97);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+    padding: 5px;
+    flex-direction: column;
+    gap: 1px;
+  }
+  #proj-menu.open { display: flex; }
+  #proj-menu .pm-section {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    padding: 6px 10px 3px;
+    opacity: 0.6;
+  }
+  .pm-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-muted);
+    transition: background 0.1s, color 0.1s;
+    user-select: none;
+  }
+  .pm-item:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+  .pm-item.active { color: var(--accent2); background: rgba(48,209,88,0.1); }
+  .pm-item .pm-badge {
+    margin-left: auto;
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(48,209,88,0.15);
+    color: var(--accent2);
+    border: 1px solid rgba(48,209,88,0.25);
+  }
+
+  /* ── GRID SORT ── */
+  .grid-sort-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  #btn-grid-sort {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.06);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 12px;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+  }
+  #btn-grid-sort:hover { background: rgba(255,255,255,0.12); color: var(--text); }
+  #btn-grid-sort.active { color: var(--accent); border-color: rgba(10,132,255,0.35); background: rgba(10,132,255,0.1); }
+  #btn-grid-sort-dir {
+    display: flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.06);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+  #btn-grid-sort-dir:hover { background: rgba(255,255,255,0.12); color: var(--text); }
+  #btn-grid-sort-dir.active { color: var(--accent); border-color: rgba(10,132,255,0.35); background: rgba(10,132,255,0.1); }
+  #grid-sort-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 200;
+    min-width: 150px;
+    background: rgba(28,28,34,0.97);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    padding: 5px;
+    flex-direction: column;
+    gap: 1px;
+  }
+  #grid-sort-menu.open { display: flex; }
+  .gsm-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-muted);
+    transition: background 0.1s, color 0.1s;
+    user-select: none;
+  }
+  .gsm-item:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+  .gsm-item.active { color: var(--accent); background: rgba(10,132,255,0.12); }
+
+  /* ── ZOOM SLIDER ── */
+  .zoom-control {
+    display: flex; align-items: center; gap: 7px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .zoom-control svg { flex-shrink: 0; }
+  #zoom-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 80px; height: 4px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.15);
+    outline: none; cursor: pointer;
+  }
+  #zoom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer; transition: transform 0.1s;
+  }
+  #zoom-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+  #current-path {
+    font-size: 11px;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  /* ── BODY ── */
+  #body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: var(--sidebar-w);
+    background: rgba(24,24,28,0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  #sidebar-header {
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  #sidebar-header-top {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  #sidebar-sort-row {
+    display: flex; align-items: center; gap: 5px;
+  }
+  .sort-btn {
+    display: flex; align-items: center; gap: 4px;
+    padding: 3px 7px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 10px; font-weight: 500;
+    text-transform: none; letter-spacing: 0;
+    transition: background 0.15s, color 0.15s;
+  }
+  .sort-btn:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: var(--text); }
+  .sort-btn.active { background: rgba(10,132,255,0.2); color: var(--accent); border-color: rgba(10,132,255,0.3); }
+  .sort-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  #btn-refresh-meta {
+    display: flex; align-items: center; gap: 4px;
+    padding: 3px 7px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 10px; font-weight: 500;
+    text-transform: none; letter-spacing: 0;
+    margin-left: auto;
+    transition: background 0.15s, color 0.15s;
+  }
+  #btn-refresh-meta:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: var(--text); }
+  #btn-refresh-meta:disabled { opacity: 0.35; cursor: not-allowed; }
+  #btn-refresh-meta.spinning svg { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── SEARCH ── */
+  #search-wrap {
+    display: flex; align-items: center; gap: 7px;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    color: var(--text-muted);
+  }
+  #tree-search {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text); font-size: 12px; font-family: inherit;
+  }
+  #tree-search::placeholder { color: var(--text-muted); opacity: 0.6; }
+  #tree-search-clear {
+    display: none; background: none; border: none;
+    color: var(--text-muted); cursor: pointer;
+    padding: 2px; border-radius: 4px; line-height: 0;
+  }
+  #tree-search-clear:hover { color: var(--text); }
+  #tree-search-clear.visible { display: flex; }
+
+  .search-result {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 12px; cursor: pointer; border-radius: 6px; margin: 1px 6px;
+    color: var(--text-muted); transition: background 0.1s, color 0.1s; user-select: none;
+  }
+  .search-result:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+  .search-result .sr-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .search-result .sr-path { font-size: 10px; opacity: 0.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; max-width: 90px; }
+  .search-result mark { background: rgba(10,132,255,0.35); color: var(--text); border-radius: 2px; padding: 0 1px; }
+  #search-empty { padding: 14px 12px; font-size: 12px; color: var(--text-muted); }
+
+  #tree { flex: 1; overflow-y: auto; padding: 6px 0; }
+  #tree::-webkit-scrollbar { width: 4px; }
+  #tree::-webkit-scrollbar-track { background: transparent; }
+  #tree::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
+  .tree-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 12px; cursor: pointer; border-radius: 6px; margin: 1px 6px;
+    color: var(--text-muted); transition: background 0.1s, color 0.1s; user-select: none;
+  }
+  .tree-item:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+  .tree-item.active { background: rgba(10,132,255,0.2); color: var(--accent); }
+  .tree-item .icon { flex-shrink: 0; opacity: 0.7; }
+  .tree-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tree-item .chevron { flex-shrink: 0; transition: transform 0.15s; opacity: 0.5; }
+  .tree-item.open .chevron { transform: rotate(90deg); }
+  .tree-children { padding-left: 16px; }
+  .tree-count { font-size: 10px; color: var(--text-muted); opacity: 0.6; flex-shrink: 0; white-space: nowrap; }
+  .tree-size  { font-size: 10px; color: var(--text-muted); opacity: 0.45; flex-shrink: 0; white-space: nowrap; }
+
+  /* ── RESIZER ── */
+  #resizer {
+    width: 5px; min-width: 5px; cursor: col-resize;
+    background: transparent; position: relative; z-index: 10;
+    transition: background 0.15s;
+  }
+  #resizer:hover, #resizer.dragging { background: var(--accent); }
+  #resizer::after { content: ''; position: absolute; inset: 0 -4px; }
+
+  /* ── CONTENT ── */
+  #content {
+    flex: 1; overflow-y: auto; padding: 16px; background: var(--bg);
+  }
+  #content::-webkit-scrollbar { width: 6px; }
+  #content::-webkit-scrollbar-track { background: transparent; }
+  #content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+  #content-inner { display: flex; flex-direction: column; min-height: 100%; }
+
+  /* ── EMPTY STATE ── */
+  #empty-state {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 100%; gap: 12px; color: var(--text-muted);
+  }
+  #empty-state svg { opacity: 0.3; }
+  #empty-state p { font-size: 14px; }
+
+  /* ── INFO PANEL ── */
+  #info-panel {
+    display: none; flex-direction: column; gap: 10px;
+    padding: 14px 16px; margin-bottom: 14px;
+    background: rgba(40,40,46,0.6);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border); border-radius: 12px; flex-shrink: 0;
+  }
+  #info-panel .info-title {
+    font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.2px;
+  }
+  #info-panel .info-subtitle { font-size: 11px; color: var(--text-muted); margin-top: -4px; }
+  #info-panel .info-meta    { font-size: 11px; color: var(--text-muted); }
+  .info-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  #btn-favorite {
+    display: flex; align-items: center; gap: 7px;
+    padding: 6px 14px; border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.06);
+    color: var(--text-muted); cursor: pointer; font-size: 12px;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  #btn-favorite:hover { background: rgba(255,255,255,0.12); color: var(--text); }
+  #btn-favorite.is-favorite { border-color: rgba(250,180,0,0.4); background: rgba(250,180,0,0.1); color: #fabb00; }
+  #btn-favorite.is-favorite:hover { background: rgba(250,180,0,0.18); }
+  #btn-favorite kbd {
+    font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.07); font-family: inherit;
+  }
+  #btn-favorite.is-favorite kbd { border-color: rgba(250,180,0,0.3); background: rgba(250,180,0,0.1); }
+
+  #btn-trash {
+    display: flex; align-items: center; gap: 7px;
+    padding: 6px 14px; border-radius: 8px;
+    border: 1px solid rgba(255,80,80,0.25); background: rgba(255,60,60,0.08);
+    color: #ff6b6b; cursor: pointer; font-size: 12px;
+    transition: background 0.15s; margin-left: auto;
+  }
+  #btn-trash:hover:not(:disabled) { background: rgba(255,60,60,0.18); }
+  #btn-trash:disabled { opacity: 0.4; cursor: not-allowed; }
+  #btn-trash kbd {
+    font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    border: 1px solid rgba(255,80,80,0.3); background: rgba(255,60,60,0.12); font-family: inherit;
+  }
+
+  .info-title.is-favorite::before { content: '★ '; color: #fabb00; }
+
+  /* ── VIDEO GRID ── */
+  #video-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(calc(var(--zoom,1) * 220px), 1fr));
+    gap: 12px;
+  }
+  .vtile {
+    border-radius: 10px; overflow: hidden;
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    display: flex; flex-direction: column;
+  }
+  .vtile:hover { transform: scale(1.02); box-shadow: 0 8px 28px rgba(0,0,0,0.55); }
+  .vtile-thumb {
+    position: relative;
+    aspect-ratio: 16/9;
+    background: #111;
+    overflow: hidden;
+  }
+  .vtile-thumb video {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    pointer-events: none;
+  }
+  /* play-icon overlay */
+  .vtile-thumb::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.25);
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .vtile:hover .vtile-thumb::after { background: rgba(0,0,0,0.1); }
+  .vtile-play {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1; pointer-events: none;
+    transition: background 0.15s, transform 0.15s;
+  }
+  .vtile:hover .vtile-play { background: rgba(255,255,255,0.3); transform: translate(-50%,-50%) scale(1.1); }
+  .vtile-play svg { margin-left: 3px; }
+  /* VR badge */
+  .vtile-vr-badge {
+    position: absolute; top: 6px; right: 6px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+    padding: 2px 6px; border-radius: 4px;
+    background: rgba(48,209,88,0.25); color: var(--accent2);
+    border: 1px solid rgba(48,209,88,0.4);
+    z-index: 2; pointer-events: none;
+  }
+  .vtile-info {
+    padding: 8px 10px;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .vtile-name {
+    font-size: 12px; font-weight: 500; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .vtile-meta { font-size: 10px; color: var(--text-muted); }
+
+  /* ── DETAIL VIEW (single video player) ── */
+  #detail-view {
+    display: none; flex-direction: column; gap: 14px;
+  }
+  #detail-header {
+    display: flex; align-items: center; gap: 10px;
+  }
+  #btn-back {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: rgba(255,255,255,0.06);
+    color: var(--text-muted); cursor: pointer; font-size: 12px;
+    transition: background 0.15s, color 0.15s; white-space: nowrap; flex-shrink: 0;
+  }
+  #btn-back:hover { background: rgba(255,255,255,0.12); color: var(--text); }
+  #detail-title {
+    font-size: 14px; font-weight: 600; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #detail-meta { font-size: 11px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+
+  /* Video.js player wrapper — fills available width */
+  #vjs-wrap {
+    width: 100%;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #000;
+    border: 1px solid var(--border);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+  }
+  #vjs-wrap .video-js {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 16/9;
+    border-radius: 10px;
+  }
+  /* VR canvas fills the player */
+  #vjs-wrap .vjs-tech { border-radius: 10px; }
+
+  /* projection badge next to title */
+  #proj-badge {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+    padding: 2px 7px; border-radius: 4px;
+    background: rgba(48,209,88,0.18); color: var(--accent2);
+    border: 1px solid rgba(48,209,88,0.35);
+    display: none; flex-shrink: 0;
+  }
+  #proj-badge.visible { display: inline-flex; }
+
+  /* neighbour nav */
+  #detail-nav {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .dn-btn {
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: rgba(255,255,255,0.06);
+    color: var(--text-muted); cursor: pointer; font-size: 12px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .dn-btn:hover:not(:disabled) { background: rgba(255,255,255,0.12); color: var(--text); }
+  .dn-btn:disabled { opacity: 0.25; cursor: default; }
+  #detail-pos { font-size: 11px; color: var(--text-muted); margin: 0 4px; }
+
+  /* ── VIDEO.JS OVERRIDES ── */
+  .video-js .vjs-big-play-button {
+    background: rgba(10,132,255,0.8) !important;
+    border: none !important;
+    border-radius: 50% !important;
+    width: 64px !important; height: 64px !important;
+    top: 50% !important; left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+  }
+  .vjs-has-started .vjs-big-play-button { display: none !important; }
+  .video-js .vjs-control-bar { background: rgba(0,0,0,0.55); backdrop-filter: blur(10px); }
+
+  /* ── TILE TOOLTIP ── */
+  #tile-tooltip {
+    position: fixed; z-index: 500; pointer-events: none;
+    display: none; flex-direction: column; gap: 4px;
+    padding: 9px 12px; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(28,28,34,0.88);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    font-size: 11px; color: var(--text-muted);
+    white-space: nowrap; max-width: 280px;
+  }
+  #tile-tooltip.visible { display: flex; }
+  #tile-tooltip .tt-row { display: flex; justify-content: space-between; gap: 16px; }
+  #tile-tooltip .tt-row.tt-wrap { flex-direction: column; gap: 2px; white-space: normal; word-break: break-all; }
+  #tile-tooltip .tt-label { opacity: 0.6; flex-shrink: 0; }
+  #tile-tooltip .tt-val { color: var(--text); font-variant-numeric: tabular-nums; }
+
+  /* ── FULLSCREEN ── */
+  :fullscreen #topbar { display: flex; }
+  :fullscreen body { height: 100vh; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <span class="logo">🎬 Video Player</span>
+  <div class="tb-sep"></div>
+
+  <button class="tb-btn" id="btn-open">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+    Open Folder
+  </button>
+
+  <span id="current-path"></span>
+  <div class="tb-spacer"></div>
+
+  <!-- PROJECTION PICKER -->
+  <div class="proj-wrap">
+    <button id="btn-proj" title="VR / 360 projection">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><ellipse cx="12" cy="12" rx="4" ry="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+      <span id="proj-label">Flat</span>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div id="proj-menu">
+      <div class="pm-section">Flat</div>
+      <div class="pm-item active" data-proj="NONE">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
+        Normal
+      </div>
+      <div class="pm-section">360° VR</div>
+      <div class="pm-item" data-proj="360">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><ellipse cx="12" cy="12" rx="4" ry="10"/></svg>
+        360° Sphere <span class="pm-badge">VR</span>
+      </div>
+      <div class="pm-item" data-proj="360_LR">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+        360° Side-by-Side <span class="pm-badge">VR</span>
+      </div>
+      <div class="pm-item" data-proj="360_TB">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+        360° Top-Bottom <span class="pm-badge">VR</span>
+      </div>
+      <div class="pm-section">180° VR</div>
+      <div class="pm-item" data-proj="180">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0 1 0 20"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+        180° Sphere <span class="pm-badge">VR</span>
+      </div>
+      <div class="pm-item" data-proj="180_LR">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0 1 0 20"/><line x1="2" y1="12" x2="12" y2="12"/></svg>
+        180° Side-by-Side <span class="pm-badge">VR</span>
+      </div>
+      <div class="pm-section">Cube</div>
+      <div class="pm-item" data-proj="360_CUBE">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        360° Cube <span class="pm-badge">VR</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tb-sep"></div>
+
+  <!-- GRID SORT -->
+  <div class="grid-sort-wrap">
+    <button id="btn-grid-sort" title="Sort videos">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
+      <span id="grid-sort-label">Name</span>
+    </button>
+    <div id="grid-sort-menu">
+      <div class="gsm-item active" data-sort="name">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>Name
+      </div>
+      <div class="gsm-item" data-sort="size">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Size
+      </div>
+      <div class="gsm-item" data-sort="modified">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Last Modified
+      </div>
+      <div class="gsm-item" data-sort="created">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Date Created
+      </div>
+    </div>
+  </div>
+  <button id="btn-grid-sort-dir" title="Toggle sort direction">
+    <svg id="sort-dir-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+  </button>
+
+  <div class="tb-sep"></div>
+
+  <!-- ZOOM -->
+  <div class="zoom-control">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+    <input type="range" id="zoom-slider" min="50" max="300" value="100" step="10" title="Zoom" />
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+  </div>
+
+  <div class="tb-sep"></div>
+
+  <button class="tb-btn" id="btn-fs" title="Fullscreen">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+  </button>
+</div>
+
+<!-- BODY -->
+<div id="body">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <div id="sidebar-header-top">
+        <span>Explorer</span>
+        <button id="btn-refresh-meta" title="Calculate directory sizes">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          refresh
+        </button>
+      </div>
+      <div id="sidebar-sort-row">
+        <button id="btn-sort" class="sort-btn" title="Sort folders by video count">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
+          by count
+        </button>
+        <button id="btn-sort-size" class="sort-btn" title="Sort folders by total size" disabled>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          by size
+        </button>
+      </div>
+    </div>
+    <div id="search-wrap">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="tree-search" type="text" placeholder="Search…" autocomplete="off" spellcheck="false" />
+      <button id="tree-search-clear" aria-label="Clear">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="tree">
+      <div id="empty-tree" style="padding:16px 12px;color:var(--text-muted);font-size:12px;">
+        Open a folder to begin
+      </div>
+    </div>
+  </div>
+
+  <!-- RESIZER -->
+  <div id="resizer"></div>
+
+  <!-- CONTENT -->
+  <div id="content">
+    <div id="content-inner">
+
+      <!-- INFO PANEL (folder summary) -->
+      <div id="info-panel">
+        <div class="info-title" id="info-title">—</div>
+        <div class="info-subtitle" id="info-subtitle"></div>
+        <div class="info-meta"    id="info-meta"></div>
+        <div class="info-actions">
+          <button id="btn-favorite" title="Toggle favourite (F)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Favourite <kbd>F</kbd>
+          </button>
+          <button id="btn-trash">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            Move to Trash <kbd>⌫</kbd>
+          </button>
+        </div>
+      </div>
+
+      <!-- EMPTY STATE -->
+      <div id="empty-state">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <p>Select a folder to view videos</p>
+      </div>
+
+      <!-- GRID VIEW -->
+      <div id="video-grid" style="display:none"></div>
+
+      <!-- DETAIL VIEW -->
+      <div id="detail-view">
+        <div id="detail-header">
+          <button id="btn-back">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            Back
+          </button>
+          <div id="detail-title"></div>
+          <div id="proj-badge"></div>
+          <div id="detail-meta"></div>
+        </div>
+        <div id="vjs-wrap">
+          <video id="vjs-player" class="video-js vjs-big-play-centered" controls preload="auto" playsinline></video>
+        </div>
+        <div id="detail-nav">
+          <button class="dn-btn" id="dn-prev">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            Previous
+          </button>
+          <span id="detail-pos"></span>
+          <button class="dn-btn" id="dn-next">
+            Next
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="tile-tooltip"></div>
+
+
+<script>
+const { get, set } = idbKeyval;
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let rootHandle        = null;
+let currentFileHandles = [];   // FileSystemFileHandle[] for current folder
+let currentMediaEls   = [];    // vtile divs parallel to currentFileHandles
+let currentDirHandle  = null;
+let currentDirPath    = '';
+let currentDirName    = '';
+let viewMode          = 'grid'; // 'grid' | 'detail'
+let detailIndex       = 0;      // which video is open in detail view
+
+let sortByCount = new URL(location.href).searchParams.get('sort') === 'count';
+let sortBySize  = new URL(location.href).searchParams.get('sort') === 'size';
+if (sortBySize) sortByCount = false;
+
+// VR projection: 'NONE' | '360' | '360_LR' | '360_TB' | '180' | '180_LR' | '360_CUBE'
+let vrProjection = 'NONE';
+const VR_PROJ_LABELS = {
+  'NONE': 'Flat', '360': '360°', '360_LR': '360° SbS', '360_TB': '360° TB',
+  '180': '180°', '180_LR': '180° SbS', '360_CUBE': 'Cube',
+};
+const VR_PROJS = new Set(['360','360_LR','360_TB','180','180_LR','360_CUBE']);
+
+// Video.js player instance (single, reused)
+let vjsPlayer = null;
+
+// ── SIZE METADATA ─────────────────────────────────────────────────────────────
+let sizeMetaCache = null;
+
+function sizeMetaKey() {
+  return rootHandle ? `videoPlayerSizeMeta:${rootHandle.name}` : null;
+}
+function loadSizeMeta() {
+  const key = sizeMetaKey();
+  if (!key) return null;
+  try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : null; } catch { return null; }
+}
+function saveSizeMeta(meta) {
+  const key = sizeMetaKey();
+  if (key) localStorage.setItem(key, JSON.stringify(meta));
+}
+async function calcDirSize(dirHandle, pathPrefix, out) {
+  let total = 0;
+  for await (const entry of dirHandle.values()) {
+    if (entry.kind === 'file') { const f = await entry.getFile(); total += f.size; }
+    else {
+      const cp = pathPrefix ? `${pathPrefix}/${entry.name}` : entry.name;
+      const cs = await calcDirSize(entry, cp, out);
+      out[cp] = cs; total += cs;
+    }
+  }
+  return total;
+}
+function updateSizeSortBtn() {
+  const btn = document.getElementById('btn-sort-size');
+  if (!btn) return;
+  btn.disabled = !sizeMetaCache;
+  btn.classList.toggle('active', sortBySize);
+}
+
+// ── FAVORITES ─────────────────────────────────────────────────────────────────
+let favorites     = new Set();
+let trashedItems  = new Set();
+
+async function loadMetadata() {
+  favorites = new Set(); trashedItems = new Set();
+  if (!rootHandle) return;
+  try {
+    const fh   = await rootHandle.getFileHandle('video-player-metadata.json');
+    const file = await fh.getFile();
+    const data = JSON.parse(await file.text());
+    if (Array.isArray(data.favorites)) data.favorites.forEach(p => favorites.add(p));
+    if (Array.isArray(data.trashed))   data.trashed.forEach(p => trashedItems.add(p));
+  } catch { /* first run */ }
+}
+async function saveMetadata() {
+  if (!rootHandle) return;
+  try {
+    const perm = await rootHandle.requestPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') { alert('Write permission denied.'); return; }
+    const fh = await rootHandle.getFileHandle('video-player-metadata.json', { create: true });
+    const w  = await fh.createWritable();
+    await w.write(JSON.stringify({ favorites: [...favorites], trashed: [...trashedItems] }, null, 2));
+    await w.close();
+  } catch (err) { console.error('saveMetadata:', err); }
+}
+
+function updateFavoriteButton(path) {
+  const isFav = favorites.has(path);
+  btnFavorite.classList.toggle('is-favorite', isFav);
+  const svg = btnFavorite.querySelector('svg');
+  svg.setAttribute('fill', isFav ? 'currentColor' : 'none');
+  let tn = svg.nextSibling;
+  while (tn && tn.nodeType !== Node.TEXT_NODE) tn = tn.nextSibling;
+  if (tn) tn.textContent = isFav ? ' Unfavourite ' : ' Favourite ';
+  infoTitle.classList.toggle('is-favorite', isFav);
+}
+function updateTreeIcons() {
+  const favAncestors = new Set();
+  favorites.forEach(p => {
+    p.split('/').filter(Boolean).forEach((_, i, a) => {
+      if (i > 0) favAncestors.add(a.slice(0, i).join('/'));
+    });
+  });
+  document.querySelectorAll('.tree-item[data-path]').forEach(row => {
+    const p = row.dataset.path;
+    const old = row.querySelector('.folder-icon');
+    if (!old) return;
+    old.outerHTML = folderIconSvg(favorites.has(p) ? 'favorite' : favAncestors.has(p) ? 'fav-ancestor' : 'plain');
+  });
+}
+
+// ── DOM REFS ──────────────────────────────────────────────────────────────────
+const btnOpen        = document.getElementById('btn-open');
+const btnFs          = document.getElementById('btn-fs');
+const treeEl         = document.getElementById('tree');
+const emptyTree      = document.getElementById('empty-tree');
+const grid           = document.getElementById('video-grid');
+const detailView     = document.getElementById('detail-view');
+const emptyState     = document.getElementById('empty-state');
+const pathLabel      = document.getElementById('current-path');
+const infoPanel      = document.getElementById('info-panel');
+const infoTitle      = document.getElementById('info-title');
+const infoSubtitle   = document.getElementById('info-subtitle');
+const infoMeta       = document.getElementById('info-meta');
+const btnFavorite    = document.getElementById('btn-favorite');
+const btnTrash       = document.getElementById('btn-trash');
+const detailTitle    = document.getElementById('detail-title');
+const detailMeta     = document.getElementById('detail-meta');
+const detailPos      = document.getElementById('detail-pos');
+const projBadge      = document.getElementById('proj-badge');
+const btnBack        = document.getElementById('btn-back');
+const dnPrev         = document.getElementById('dn-prev');
+const dnNext         = document.getElementById('dn-next');
+const content        = document.getElementById('content');
+const tileTooltip    = document.getElementById('tile-tooltip');
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+(async () => {
+  const saved = await get('videoPlayerDir');
+  if (saved) {
+    const perm = await saved.queryPermission({ mode: 'read' });
+    if (perm === 'granted') {
+      rootHandle = saved;
+      pathLabel.textContent = saved.name;
+      sizeMetaCache = loadSizeMeta();
+      updateSizeSortBtn();
+      await loadMetadata();
+      await buildTree(treeEl, saved, 0);
+      emptyTree.style.display = 'none';
+      updateTreeIcons();
+      const savedPath = new URL(location.href).searchParams.get('folder') || '';
+      if (savedPath) await expandTreePath(savedPath);
+    }
+  }
+})();
+
+// ── OPEN FOLDER ───────────────────────────────────────────────────────────────
+btnOpen.addEventListener('click', async () => {
+  try {
+    const handle = await window.showDirectoryPicker({ mode: 'read' });
+    rootHandle = handle;
+    await set('videoPlayerDir', handle);
+    pathLabel.textContent = handle.name;
+    treeEl.innerHTML = '';
+    emptyTree.style.display = 'none';
+    allEntries = null;
+    searchInput.value = '';
+    searchClear.classList.remove('visible');
+    sizeMetaCache = loadSizeMeta();
+    updateSizeSortBtn();
+    await loadMetadata();
+    await buildTree(treeEl, handle, 0);
+    clearContent();
+    updateTreeIcons();
+  } catch (e) { if (e.name !== 'AbortError') console.error(e); }
+});
+
+// ── FOLDER SORT (sidebar) ─────────────────────────────────────────────────────
+const btnSort        = document.getElementById('btn-sort');
+const btnSortSize    = document.getElementById('btn-sort-size');
+const btnRefreshMeta = document.getElementById('btn-refresh-meta');
+
+btnSort.classList.toggle('active', sortByCount);
+
+btnSort.addEventListener('click', async () => {
+  sortByCount = !sortByCount;
+  if (sortByCount) sortBySize = false;
+  btnSort.classList.toggle('active', sortByCount);
+  updateSizeSortBtn();
+  setUrlParam(currentDirPath);
+  if (rootHandle) { treeEl.innerHTML = ''; await buildTree(treeEl, rootHandle, 0); if (currentDirPath) await expandTreePath(currentDirPath, false); updateTreeIcons(); }
+});
+btnSortSize.addEventListener('click', async () => {
+  if (!sizeMetaCache) return;
+  sortBySize = !sortBySize;
+  if (sortBySize) sortByCount = false;
+  btnSort.classList.toggle('active', sortByCount);
+  updateSizeSortBtn();
+  setUrlParam(currentDirPath);
+  if (rootHandle) { treeEl.innerHTML = ''; await buildTree(treeEl, rootHandle, 0); if (currentDirPath) await expandTreePath(currentDirPath, false); updateTreeIcons(); }
+});
+btnRefreshMeta.addEventListener('click', async () => {
+  if (!rootHandle) return;
+  btnRefreshMeta.disabled = true;
+  btnRefreshMeta.classList.add('spinning');
+  try {
+    const meta = {};
+    await calcDirSize(rootHandle, '', meta);
+    sizeMetaCache = meta; saveSizeMeta(meta); updateSizeSortBtn();
+  } catch (err) { console.error('Size refresh failed:', err); }
+  finally { btnRefreshMeta.disabled = false; btnRefreshMeta.classList.remove('spinning'); }
+});
+
+</script>
+
+<script>
+// ── URL STATE ─────────────────────────────────────────────────────────────────
+function setUrlParam(path) {
+  const url = new URL(location.href);
+  if (path) url.searchParams.set('folder', path); else url.searchParams.delete('folder');
+  if (sortByCount) url.searchParams.set('sort', 'count');
+  else if (sortBySize) url.searchParams.set('sort', 'size');
+  else url.searchParams.delete('sort');
+  history.replaceState(null, '', url);
+}
+
+async function expandTreePath(targetPath, andLoad = true) {
+  const parts = targetPath.split('/').filter(Boolean);
+  let builtPath = '';
+  for (let i = 0; i < parts.length; i++) {
+    builtPath = builtPath ? `${builtPath}/${parts[i]}` : parts[i];
+    const isLast = i === parts.length - 1;
+    const row = treeEl.querySelector(`[data-path="${CSS.escape(builtPath)}"]`);
+    if (!row) break;
+    await row._expand(isLast && andLoad);
+  }
+}
+
+// ── TREE SEARCH ───────────────────────────────────────────────────────────────
+const searchInput = document.getElementById('tree-search');
+const searchClear = document.getElementById('tree-search-clear');
+let allEntries = null;
+
+async function collectAll(dirHandle, path = '') {
+  const results = [];
+  for await (const entry of dirHandle.values()) {
+    if (entry.kind !== 'directory') continue;
+    const entryPath = path ? `${path}/${entry.name}` : entry.name;
+    results.push({ entry, path: entryPath, parentPath: path });
+    results.push(...await collectAll(entry, entryPath));
+  }
+  return results;
+}
+function highlight(name, query) {
+  const idx = name.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return name;
+  return name.slice(0, idx) + `<mark>${name.slice(idx, idx + query.length)}</mark>` + name.slice(idx + query.length);
+}
+async function runSearch(query) {
+  treeEl.innerHTML = '';
+  if (!query) { allEntries = null; await buildTree(treeEl, rootHandle, 0); return; }
+  if (!allEntries) allEntries = await collectAll(rootHandle);
+  const q = query.toLowerCase();
+  const matches = allEntries.filter(({ entry }) => entry.name.toLowerCase().includes(q));
+  if (!matches.length) { treeEl.innerHTML = '<div id="search-empty">No results</div>'; return; }
+  for (const { entry, path, parentPath } of matches) {
+    const row = document.createElement('div');
+    row.className = 'search-result';
+    row.innerHTML = `<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span class="sr-name">${highlight(entry.name, query)}</span><span class="sr-path" title="${parentPath}">${parentPath || '/'}</span>`;
+    row.addEventListener('click', async () => {
+      document.querySelectorAll('.search-result').forEach(r => r.classList.remove('active'));
+      row.classList.add('active');
+      await loadFolderVideos(entry, row, path);
+    });
+    treeEl.appendChild(row);
+  }
+}
+let searchDebounce;
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim();
+  searchClear.classList.toggle('visible', q.length > 0);
+  if (!q) allEntries = null;
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => { if (rootHandle) runSearch(q); }, 200);
+});
+searchClear.addEventListener('click', () => {
+  searchInput.value = ''; searchClear.classList.remove('visible');
+  allEntries = null;
+  if (rootHandle) runSearch('');
+  searchInput.focus();
+});
+
+// ── FILE EXTENSIONS ───────────────────────────────────────────────────────────
+const VIDEO_EXT = /\.(mp4|webm|mov|mkv|avi|m4v|ogv)$/i;
+
+// ── FOLDER ICON ───────────────────────────────────────────────────────────────
+function folderIconSvg(kind) {
+  const f = `<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>`;
+  if (kind === 'favorite' || kind === 'fav-ancestor') {
+    const fill = kind === 'favorite' ? '#fabb00' : 'rgba(255,255,255,1)';
+    const badge = `<polygon points="20,11 21.5,15.5 26,15.5 22.5,18 23.8,22.5 20,20 16.2,22.5 17.5,18 14,15.5 18.5,15.5" fill="${fill}" stroke="${fill}" stroke-width="0.8"/>`;
+    return `<svg class="icon folder-icon" width="16" height="16" viewBox="0 0 28 26" fill="none" stroke="currentColor" stroke-width="2">${f}${badge}</svg>`;
+  }
+  return `<svg class="icon folder-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${f}</svg>`;
+}
+function folderIcon(path) {
+  if (favorites.has(path)) return folderIconSvg('favorite');
+  for (const fav of favorites) { if (fav.startsWith(path + '/')) return folderIconSvg('fav-ancestor'); }
+  return folderIconSvg('plain');
+}
+
+// ── BUILD TREE ────────────────────────────────────────────────────────────────
+async function buildTree(container, dirHandle, depth, parentPath = '') {
+  const entries = [];
+  for await (const entry of dirHandle.values()) entries.push(entry);
+
+  const countMap = new Map();
+  await Promise.all(entries.filter(e => e.kind === 'directory').map(async e => {
+    let n = 0; for await (const _ of e.values()) n++; countMap.set(e.name, n);
+  }));
+
+  entries.sort((a, b) => {
+    if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
+    if (a.kind === 'directory') {
+      const aP = parentPath ? `${parentPath}/${a.name}` : a.name;
+      const bP = parentPath ? `${parentPath}/${b.name}` : b.name;
+      if (sortBySize && sizeMetaCache) {
+        const d = (sizeMetaCache[bP] ?? 0) - (sizeMetaCache[aP] ?? 0);
+        return d !== 0 ? d : a.name.localeCompare(b.name, undefined, { numeric: true });
+      }
+      if (sortByCount) {
+        const d = (countMap.get(b.name) ?? 0) - (countMap.get(a.name) ?? 0);
+        return d !== 0 ? d : a.name.localeCompare(b.name, undefined, { numeric: true });
+      }
+    }
+    return a.name.localeCompare(b.name, undefined, { numeric: true });
+  });
+
+  for (const entry of entries) {
+    const row = document.createElement('div');
+    row.className = 'tree-item';
+    row.style.paddingLeft = `${12 + depth * 14}px`;
+
+    if (entry.kind === 'directory') {
+      const childCount = countMap.get(entry.name) ?? 0;
+      const entryPath  = parentPath ? `${parentPath}/${entry.name}` : entry.name;
+      row.dataset.path = entryPath;
+      const sizeStr = (sizeMetaCache && sizeMetaCache[entryPath] != null)
+        ? `<span class="tree-size">${formatBytes(sizeMetaCache[entryPath])}</span>` : '';
+      row.innerHTML = `
+        <svg class="icon chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        ${folderIcon(entryPath)}
+        <span class="name">${entry.name}</span>
+        <span class="tree-count">${childCount}</span>${sizeStr}`;
+
+      const childContainer = document.createElement('div');
+      childContainer.className = 'tree-children';
+      childContainer.style.display = 'none';
+      let loaded = false;
+
+      const expand = async (andLoad = true) => {
+        if (childContainer.style.display === 'none') {
+          childContainer.style.display = 'block'; row.classList.add('open');
+        }
+        if (!loaded) { loaded = true; await buildTree(childContainer, entry, depth + 1, entryPath); updateTreeIcons(); }
+        if (andLoad) await loadFolderVideos(entry, row, entryPath);
+      };
+      row._expand   = expand;
+      row._collapse = () => { childContainer.style.display = 'none'; row.classList.remove('open'); };
+
+      row.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (childContainer.style.display !== 'none') {
+          childContainer.style.display = 'none'; row.classList.remove('open');
+          await loadFolderVideos(entry, row, entryPath);
+        } else { await expand(true); }
+      });
+      container.appendChild(row);
+      container.appendChild(childContainer);
+
+    } else if (VIDEO_EXT.test(entry.name)) {
+      // individual video files visible in tree
+      row.innerHTML = `
+        <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span class="name">${entry.name}</span>
+        <span class="tree-size"></span>`;
+      row.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        setActiveRow(row);
+        // render this single file as a 1-item "folder"
+        currentFileHandles = [entry];
+        currentMediaEls = [];
+        showInfoPanelFor(entry.name, 1, 0, parentPath || currentDirPath);
+        await openDetailView(0);
+      });
+      container.appendChild(row);
+      entry.getFile().then(f => {
+        const el = row.querySelector('.tree-size');
+        if (el) el.textContent = formatBytes(f.size);
+      }).catch(() => {});
+    }
+  }
+}
+
+// ── LOAD FOLDER ───────────────────────────────────────────────────────────────
+async function loadFolderVideos(dirHandle, row, dirPath = '') {
+  if (row) setActiveRow(row);
+
+  const entries = [];
+  for await (const entry of dirHandle.values()) entries.push(entry);
+  entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+  const fileHandles = entries.filter(e => e.kind === 'file' && VIDEO_EXT.test(e.name));
+
+  let totalSize = 0;
+  await Promise.all(fileHandles.map(async h => { const f = await h.getFile(); totalSize += f.size; }));
+
+  currentDirHandle = dirHandle;
+  currentDirPath   = dirPath;
+  setUrlParam(dirPath);
+
+  showInfoPanelFor(dirHandle.name, fileHandles.length, totalSize, dirPath);
+
+  if (fileHandles.length) {
+    currentFileHandles = await sortedHandles(fileHandles);
+    await renderGrid();
+  } else {
+    clearContent();
+  }
+}
+
+function showInfoPanelFor(name, count, size, dirPath) {
+  currentDirName = name;
+  infoTitle.textContent = name;
+  const parts = dirPath.split('/').filter(Boolean);
+  const parent = parts.length > 1 ? parts[parts.length - 2] : parts.length === 1 ? '/' : '';
+  infoSubtitle.textContent = parent ? `in ${parent}` : '';
+  infoMeta.textContent = `${count} video${count !== 1 ? 's' : ''}  ·  ${formatBytes(size)}`;
+  infoPanel.style.display = 'flex';
+  updateFavoriteButton(dirPath || name);
+}
+
+function setActiveRow(row) {
+  document.querySelectorAll('.tree-item.active, .search-result.active').forEach(r => r.classList.remove('active'));
+  row.classList.add('active');
+}
+
+</script>
+
+<script>
+// ── GRID SORT ─────────────────────────────────────────────────────────────────
+const btnGridSort    = document.getElementById('btn-grid-sort');
+const btnGridSortDir = document.getElementById('btn-grid-sort-dir');
+const gridSortMenu   = document.getElementById('grid-sort-menu');
+const gridSortLabel  = document.getElementById('grid-sort-label');
+const sortDirIcon    = document.getElementById('sort-dir-icon');
+
+let gridSortKey = 'name';
+let gridSortAsc = true;
+const SORT_LABELS = { name: 'Name', size: 'Size', modified: 'Modified', created: 'Created' };
+
+async function getFileMeta(handle) {
+  if (!handle._fileMeta) {
+    const f = await handle.getFile();
+    handle._fileMeta = { size: f.size, modified: f.lastModified, created: f.lastModified };
+  }
+  return handle._fileMeta;
+}
+async function sortedHandles(handles) {
+  if (gridSortKey === 'name') {
+    const s = [...handles].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+    return gridSortAsc ? s : s.reverse();
+  }
+  const wm = await Promise.all(handles.map(async h => ({ h, meta: await getFileMeta(h) })));
+  wm.sort((a, b) => {
+    let d = 0;
+    if (gridSortKey === 'size')     d = a.meta.size     - b.meta.size;
+    if (gridSortKey === 'modified') d = a.meta.modified - b.meta.modified;
+    if (gridSortKey === 'created')  d = a.meta.created  - b.meta.created;
+    if (d === 0) d = a.h.name.localeCompare(b.h.name, undefined, { numeric: true });
+    return gridSortAsc ? d : -d;
+  });
+  return wm.map(x => x.h);
+}
+function updateSortUI() {
+  gridSortLabel.textContent = SORT_LABELS[gridSortKey];
+  btnGridSort.classList.toggle('active', gridSortKey !== 'name');
+  btnGridSortDir.classList.toggle('active', !gridSortAsc);
+  sortDirIcon.setAttribute('points', gridSortAsc ? '18 15 12 9 6 15' : '6 9 12 15 18 9');
+  document.querySelectorAll('.gsm-item').forEach(el => el.classList.toggle('active', el.dataset.sort === gridSortKey));
+}
+btnGridSort.addEventListener('click', e => { e.stopPropagation(); gridSortMenu.classList.toggle('open'); });
+document.addEventListener('click', () => { gridSortMenu.classList.remove('open'); document.getElementById('proj-menu').classList.remove('open'); });
+gridSortMenu.addEventListener('click', e => e.stopPropagation());
+gridSortMenu.querySelectorAll('.gsm-item').forEach(item => {
+  item.addEventListener('click', async () => {
+    gridSortKey = item.dataset.sort;
+    gridSortMenu.classList.remove('open');
+    updateSortUI();
+    if (currentFileHandles.length) { currentFileHandles = await sortedHandles(currentFileHandles); await renderGrid(); }
+  });
+});
+btnGridSortDir.addEventListener('click', async () => {
+  gridSortAsc = !gridSortAsc; updateSortUI();
+  if (currentFileHandles.length) { currentFileHandles = await sortedHandles(currentFileHandles); await renderGrid(); }
+});
+updateSortUI();
+
+// ── VIDEO LAZY LOADING (thumbnails in grid) ───────────────────────────────────
+let thumbObserver = null;
+
+function disconnectThumbObserver() {
+  if (thumbObserver) { thumbObserver.disconnect(); thumbObserver = null; }
+}
+function revokeThumbBlob(vid) {
+  if (vid._blobUrl) {
+    vid.pause(); vid.removeAttribute('src'); vid.load();
+    URL.revokeObjectURL(vid._blobUrl); vid._blobUrl = null;
+  }
+}
+function observeThumbs(scrollRoot) {
+  disconnectThumbObserver();
+  thumbObserver = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      const vid = entry.target;
+      if (entry.isIntersecting) {
+        if (!vid._blobUrl && vid._fileHandle) {
+          vid._fileHandle.getFile().then(file => {
+            if (!vid.isConnected) return;
+            const url = URL.createObjectURL(file);
+            vid._blobUrl = url;
+            vid.src = url;
+            // only play on hover — start paused
+          });
+        }
+      } else {
+        revokeThumbBlob(vid);
+      }
+    }
+  }, { root: scrollRoot, rootMargin: '300px 0px', threshold: 0 });
+  scrollRoot.querySelectorAll('video[data-thumb]').forEach(v => thumbObserver.observe(v));
+}
+
+// ── RENDER GRID ───────────────────────────────────────────────────────────────
+async function renderGrid() {
+  viewMode = 'grid';
+  disconnectThumbObserver();
+
+  // revoke existing thumb blobs
+  grid.querySelectorAll('video[data-thumb]').forEach(revokeThumbBlob);
+  grid.innerHTML = '';
+  grid.style.display = 'grid';
+  detailView.style.display = 'none';
+  emptyState.style.display = 'none';
+  currentMediaEls = [];
+
+  for (let i = 0; i < currentFileHandles.length; i++) {
+    const handle = currentFileHandles[i];
+    const tile   = document.createElement('div');
+    tile.className = 'vtile';
+
+    const thumb = document.createElement('div');
+    thumb.className = 'vtile-thumb';
+
+    // lazy video thumbnail
+    const vid = document.createElement('video');
+    vid.dataset.thumb  = '1';
+    vid._fileHandle    = handle;
+    vid._blobUrl       = null;
+    vid.muted          = true;
+    vid.playsInline    = true;
+    vid.preload        = 'metadata'; // get poster frame
+    vid.currentTime    = 2;
+    thumb.appendChild(vid);
+
+    // play icon overlay
+    const playIcon = document.createElement('div');
+    playIcon.className = 'vtile-play';
+    playIcon.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+    thumb.appendChild(playIcon);
+
+    // VR badge if projection is not flat
+    if (VR_PROJS.has(vrProjection)) {
+      const badge = document.createElement('div');
+      badge.className = 'vtile-vr-badge';
+      badge.textContent = VR_PROJ_LABELS[vrProjection] || 'VR';
+      thumb.appendChild(badge);
+    }
+
+    tile.appendChild(thumb);
+
+    // info row
+    const info = document.createElement('div');
+    info.className = 'vtile-info';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'vtile-name';
+    nameEl.textContent = handle.name;
+    nameEl.title = handle.name;
+    const metaEl = document.createElement('div');
+    metaEl.className = 'vtile-meta';
+    // fill meta async
+    handle.getFile().then(f => {
+      metaEl.textContent = formatBytes(f.size) + '  ·  ' + formatDate(f.lastModified);
+    }).catch(() => {});
+    info.appendChild(nameEl);
+    info.appendChild(metaEl);
+    tile.appendChild(info);
+
+    // hover: play/pause thumbnail
+    tile.addEventListener('mouseenter', () => { if (vid.src) { vid.currentTime = 0; vid.play().catch(() => {}); } });
+    tile.addEventListener('mouseleave', () => { vid.pause(); if (vid.src) vid.currentTime = 2; });
+
+    // click: open detail
+    tile.addEventListener('click', () => openDetailView(i));
+
+    grid.appendChild(tile);
+    currentMediaEls.push(tile);
+  }
+
+  observeThumbs(content);
+}
+
+// ── CLEAR CONTENT ─────────────────────────────────────────────────────────────
+function clearContent() {
+  disconnectThumbObserver();
+  // revoke grid thumb blobs
+  grid.querySelectorAll('video[data-thumb]').forEach(revokeThumbBlob);
+  grid.innerHTML = '';
+  grid.style.display = 'none';
+  detailView.style.display = 'none';
+  emptyState.style.display = 'flex';
+  infoPanel.style.display = 'none';
+  setUrlParam('');
+  destroyVjsPlayer();
+}
+
+</script>
+
+<script>
+// ── VIDEO.JS PLAYER ───────────────────────────────────────────────────────────
+function destroyVjsPlayer() {
+  if (vjsPlayer) {
+    try { vjsPlayer.dispose(); } catch (e) { /* ignore */ }
+    vjsPlayer = null;
+    // Re-create the video element (dispose removes it from DOM)
+    const wrap = document.getElementById('vjs-wrap');
+    wrap.innerHTML = '';
+    const v = document.createElement('video');
+    v.id = 'vjs-player';
+    v.className = 'video-js vjs-big-play-centered';
+    v.controls = true;
+    v.setAttribute('preload', 'auto');
+    v.setAttribute('playsinline', '');
+    wrap.appendChild(v);
+  }
+  // revoke any open blob
+  if (window._vjsBlobUrl) { URL.revokeObjectURL(window._vjsBlobUrl); window._vjsBlobUrl = null; }
+}
+
+async function openDetailView(index) {
+  detailIndex = index;
+  const handle = currentFileHandles[index];
+  if (!handle) return;
+
+  viewMode = 'detail';
+  grid.style.display = 'none';
+  detailView.style.display = 'flex';
+  emptyState.style.display = 'none';
+
+  // Destroy previous player and revoke blob
+  destroyVjsPlayer();
+
+  // Create blob URL for the video file
+  const file = await handle.getFile();
+  const blobUrl = URL.createObjectURL(file);
+  window._vjsBlobUrl = blobUrl;
+
+  // Update header
+  detailTitle.textContent = handle.name;
+  detailMeta.textContent  = formatBytes(file.size) + '  ·  ' + formatDate(file.lastModified);
+  detailPos.textContent   = `${index + 1} / ${currentFileHandles.length}`;
+  dnPrev.disabled = index === 0;
+  dnNext.disabled = index === currentFileHandles.length - 1;
+
+  // Update projection badge
+  if (VR_PROJS.has(vrProjection)) {
+    projBadge.textContent = VR_PROJ_LABELS[vrProjection];
+    projBadge.classList.add('visible');
+  } else {
+    projBadge.classList.remove('visible');
+  }
+
+  // Initialise Video.js
+  vjsPlayer = videojs('vjs-player', {
+    controls: true,
+    autoplay: true,
+    muted: false,
+    fluid: false,         // we control size via CSS aspect-ratio
+    responsive: true,
+    playbackRates: [0.5, 0.75, 1, 1.25, 1.5, 2],
+    html5: { vhs: { overrideNative: true } },
+  });
+
+  vjsPlayer.src({ src: blobUrl, type: file.type || 'video/mp4' });
+
+  // Attach VR plugin once player is ready (if not flat)
+  vjsPlayer.ready(() => {
+    if (vrProjection !== 'NONE') {
+      try {
+        vjsPlayer.vr({ projection: vrProjection, forceCardboard: false });
+      } catch (err) {
+        console.warn('videojs-vr init error:', err);
+      }
+    }
+  });
+}
+
+// ── PROJECTION PICKER ─────────────────────────────────────────────────────────
+const btnProj  = document.getElementById('btn-proj');
+const projMenu = document.getElementById('proj-menu');
+const projLabel= document.getElementById('proj-label');
+
+btnProj.addEventListener('click', e => { e.stopPropagation(); projMenu.classList.toggle('open'); });
+projMenu.addEventListener('click', e => e.stopPropagation());
+
+projMenu.querySelectorAll('.pm-item').forEach(item => {
+  item.addEventListener('click', async () => {
+    vrProjection = item.dataset.proj;
+    projMenu.classList.remove('open');
+
+    // Update button label & active state
+    projLabel.textContent = VR_PROJ_LABELS[vrProjection] || vrProjection;
+    btnProj.classList.toggle('vr-active', VR_PROJS.has(vrProjection));
+    projMenu.querySelectorAll('.pm-item').forEach(el => el.classList.toggle('active', el.dataset.proj === vrProjection));
+
+    // If in detail view, reopen current video with new projection
+    if (viewMode === 'detail' && currentFileHandles.length) {
+      await openDetailView(detailIndex);
+    }
+    // Refresh grid badges
+    if (viewMode === 'grid' && currentFileHandles.length) {
+      await renderGrid();
+    }
+  });
+});
+
+// ── DETAIL NAVIGATION ────────────────────────────────────────────────────────
+btnBack.addEventListener('click', async () => {
+  destroyVjsPlayer();
+  viewMode = 'grid';
+  detailView.style.display = 'none';
+  grid.style.display = 'grid';
+  // re-observe thumbnails (they were not removed)
+  observeThumbs(content);
+});
+
+dnPrev.addEventListener('click', async () => {
+  if (detailIndex > 0) await openDetailView(detailIndex - 1);
+});
+dnNext.addEventListener('click', async () => {
+  if (detailIndex < currentFileHandles.length - 1) await openDetailView(detailIndex + 1);
+});
+
+// ── FAVORITES ─────────────────────────────────────────────────────────────────
+btnFavorite.addEventListener('click', async () => {
+  if (!currentDirPath) return;
+  if (favorites.has(currentDirPath)) favorites.delete(currentDirPath);
+  else favorites.add(currentDirPath);
+  await saveMetadata();
+  updateFavoriteButton(currentDirPath);
+  updateTreeIcons();
+});
+
+// ── TRASH ─────────────────────────────────────────────────────────────────────
+async function copyDir(srcDir, destParent) {
+  const destDir = await destParent.getDirectoryHandle(srcDir.name, { create: true });
+  for await (const entry of srcDir.values()) {
+    if (entry.kind === 'file') {
+      const file = await entry.getFile();
+      const dest = await destDir.getFileHandle(entry.name, { create: true });
+      const w = await dest.createWritable(); await w.write(file); await w.close();
+    } else { await copyDir(entry, destDir); }
+  }
+}
+async function removeDir(parentHandle, dirName) {
+  const dir = await parentHandle.getDirectoryHandle(dirName);
+  for await (const entry of dir.values()) {
+    if (entry.kind === 'file') await dir.removeEntry(entry.name);
+    else await removeDir(dir, entry.name);
+  }
+  await parentHandle.removeEntry(dirName);
+}
+async function getOrCreateDirAtPath(root, pathStr) {
+  let cur = root;
+  for (const part of pathStr.split('/').filter(Boolean)) cur = await cur.getDirectoryHandle(part, { create: true });
+  return cur;
+}
+async function getDirHandle(root, pathStr) {
+  let cur = root;
+  for (const part of pathStr.split('/').filter(Boolean)) cur = await cur.getDirectoryHandle(part);
+  return cur;
+}
+
+async function trashCurrentFolder() {
+  if (!currentDirHandle || !rootHandle || !currentDirPath) return;
+  btnTrash.disabled = true;
+  try {
+    const perm = await rootHandle.requestPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') { alert('Write permission denied.'); return; }
+    if (!confirm(`Move "${currentDirHandle.name}" to Trash?\n\nDestination: trash/${currentDirPath}`)) return;
+
+    const pathParts = currentDirPath.split('/').filter(Boolean);
+    const parentPath = pathParts.slice(0, -1).join('/');
+    const trashParent = await getOrCreateDirAtPath(rootHandle, 'trash/' + parentPath);
+    await copyDir(currentDirHandle, trashParent);
+
+    let srcParent = rootHandle;
+    if (pathParts.length > 1) srcParent = await getDirHandle(rootHandle, pathParts.slice(0, -1).join('/'));
+
+    await removeDir(srcParent, currentDirHandle.name);
+    trashedItems.add(currentDirPath);
+    await saveMetadata();
+    allEntries = null;
+
+    const deletedRow = treeEl.querySelector(`[data-path="${CSS.escape(currentDirPath)}"]`);
+    if (deletedRow) {
+      const next = deletedRow.nextElementSibling;
+      if (next && next.classList.contains('tree-children')) next.remove();
+      deletedRow.remove();
+    }
+    clearContent();
+    currentDirHandle = null; currentDirPath = '';
+  } catch (err) { console.error(err); alert('Trash failed: ' + err.message); }
+  finally { btnTrash.disabled = false; }
+}
+
+btnTrash.addEventListener('click', trashCurrentFolder);
+
+// ── TILE TOOLTIP ─────────────────────────────────────────────────────────────
+let tooltipTarget = null;
+
+function formatBytes(b) {
+  if (!b) return '—';
+  if (b < 1024) return b + ' B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+  if (b < 1024*1024*1024) return (b/1024/1024).toFixed(1) + ' MB';
+  return (b/1024/1024/1024).toFixed(1) + ' GB';
+}
+function formatDate(ts) {
+  return new Date(ts).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+}
+function ttRow(label, val) {
+  return `<div class="tt-row"><span class="tt-label">${label}</span><span class="tt-val">${val}</span></div>`;
+}
+function showTooltip(x, y, html) {
+  tileTooltip.innerHTML = html;
+  tileTooltip.classList.add('visible');
+  positionTooltip(x, y);
+}
+function positionTooltip(x, y) {
+  const pad = 12, tw = tileTooltip.offsetWidth, th = tileTooltip.offsetHeight;
+  let left = x + 14, top = y + 14;
+  if (left + tw + pad > window.innerWidth)  left = x - tw - 14;
+  if (top  + th + pad > window.innerHeight) top  = y - th - 14;
+  tileTooltip.style.left = left + 'px'; tileTooltip.style.top = top + 'px';
+}
+function hideTooltip() { tileTooltip.classList.remove('visible'); tooltipTarget = null; }
+
+// Attach tooltip to a vtile
+function attachVtileTooltip(tile, handle, idx) {
+  let meta = null;
+  tile.addEventListener('mouseenter', async (e) => {
+    tooltipTarget = tile;
+    if (!meta) {
+      const f = await handle.getFile();
+      meta = { name: f.name, size: formatBytes(f.size), modified: formatDate(f.lastModified) };
+    }
+    let html = ttRow('#', `${idx + 1} / ${currentFileHandles.length}`);
+    html += `<div class="tt-row tt-wrap"><span class="tt-label">Name:</span><span class="tt-val">${meta.name}</span></div>`;
+    html += ttRow('Size:', meta.size);
+    html += ttRow('Modified:', meta.modified);
+    if (tooltipTarget === tile) showTooltip(e.clientX, e.clientY, html);
+  });
+  tile.addEventListener('mousemove', e => { if (tooltipTarget === tile) positionTooltip(e.clientX, e.clientY); });
+  tile.addEventListener('mouseleave', hideTooltip);
+}
+
+</script>
+
+<script>
+// ── ZOOM ──────────────────────────────────────────────────────────────────────
+const zoomSlider = document.getElementById('zoom-slider');
+
+function applyZoom(val) {
+  content.style.setProperty('--zoom', val / 100);
+}
+zoomSlider.addEventListener('input', () => applyZoom(zoomSlider.value));
+applyZoom(zoomSlider.value);
+
+// ── FULLSCREEN ────────────────────────────────────────────────────────────────
+btnFs.addEventListener('click', () => {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+});
+
+// ── RESIZER ───────────────────────────────────────────────────────────────────
+const sidebar = document.getElementById('sidebar');
+const resizer = document.getElementById('resizer');
+
+resizer.addEventListener('mousedown', (e) => {
+  e.preventDefault();
+  resizer.classList.add('dragging');
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+  const onMove = (e) => {
+    const bodyRect = document.getElementById('body').getBoundingClientRect();
+    const newW = Math.min(Math.max(e.clientX - bodyRect.left, 120), bodyRect.width - 200);
+    sidebar.style.width = newW + 'px';
+  };
+  const onUp = () => {
+    resizer.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+  };
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+});
+
+// ── SIBLING NAVIGATION ────────────────────────────────────────────────────────
+async function getSortedSiblings(parentHandle) {
+  const names = [];
+  for await (const e of parentHandle.values()) {
+    if (e.kind === 'directory' && e.name !== 'trash') names.push(e.name);
+  }
+  if (sortBySize && sizeMetaCache) {
+    const parentPath = currentDirPath.split('/').filter(Boolean).slice(0, -1).join('/');
+    names.sort((a, b) => {
+      const ap = parentPath ? `${parentPath}/${a}` : a;
+      const bp = parentPath ? `${parentPath}/${b}` : b;
+      const d  = (sizeMetaCache[bp] ?? 0) - (sizeMetaCache[ap] ?? 0);
+      return d !== 0 ? d : a.localeCompare(b, undefined, { numeric: true });
+    });
+    return names;
+  }
+  if (sortByCount) {
+    const counts = await Promise.all(names.map(async name => {
+      let n = 0; const d = await parentHandle.getDirectoryHandle(name);
+      for await (const _ of d.values()) n++; return { name, n };
+    }));
+    counts.sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, undefined, { numeric: true }));
+    return counts.map(c => c.name);
+  }
+  return names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+async function navigateSibling(direction) {
+  if (!currentDirHandle || !rootHandle || !currentDirPath) return;
+  const pathParts = currentDirPath.split('/').filter(Boolean);
+  let parentHandle = rootHandle;
+  if (pathParts.length > 1) parentHandle = await getDirHandle(rootHandle, pathParts.slice(0, -1).join('/'));
+  const siblings = await getSortedSiblings(parentHandle);
+  const idx = siblings.indexOf(currentDirHandle.name);
+  const targetName = direction === 'next' ? siblings[idx + 1] : siblings[idx - 1];
+  if (!targetName) return;
+  const currentRow = treeEl.querySelector(`[data-path="${CSS.escape(currentDirPath)}"]`);
+  if (currentRow?._collapse) currentRow._collapse();
+  const parentPath = pathParts.slice(0, -1).join('/');
+  const targetPath = parentPath ? `${parentPath}/${targetName}` : targetName;
+  await expandTreePath(targetPath, true);
+}
+
+// ── KEYBOARD ──────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', async (e) => {
+  const typing = document.activeElement.tagName === 'INPUT';
+
+  // Trash: Backspace
+  if (e.key === 'Backspace' && !typing) {
+    trashCurrentFolder(); return;
+  }
+  // Favourite: F
+  if (e.key === 'f' && !typing && currentDirPath) {
+    if (favorites.has(currentDirPath)) favorites.delete(currentDirPath);
+    else favorites.add(currentDirPath);
+    await saveMetadata(); updateFavoriteButton(currentDirPath); updateTreeIcons(); return;
+  }
+  // Folder navigation: Arrow up/down
+  if (!typing) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); navigateSibling('next'); return; }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); navigateSibling('prev'); return; }
+  }
+  // Detail view: left/right to navigate videos, Escape to go back
+  if (viewMode === 'detail') {
+    if (e.key === 'Escape') { btnBack.click(); return; }
+    if (e.key === 'ArrowLeft'  && !typing && detailIndex > 0)
+      { await openDetailView(detailIndex - 1); return; }
+    if (e.key === 'ArrowRight' && !typing && detailIndex < currentFileHandles.length - 1)
+      { await openDetailView(detailIndex + 1); return; }
+  }
+});
+
+</script>
+</body>
+</html>
