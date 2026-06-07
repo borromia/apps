@@ -918,7 +918,7 @@
           <div id="detail-meta"></div>
         </div>
         <div id="vjs-wrap">
-          <video id="vjs-player" class="video-js vjs-big-play-centered" controls preload="auto" playsinline></video>
+          <video id="vjs-player" class="video-js vjs-big-play-centered" controls preload="auto" playsinline crossorigin="anonymous"></video>
         </div>
         <div id="detail-nav">
           <button class="dn-btn" id="dn-prev">
@@ -1849,6 +1849,7 @@ function destroyVjsPlayer() {
     v.controls = true;
     v.setAttribute('preload', 'auto');
     v.setAttribute('playsinline', '');
+    v.setAttribute('crossorigin', 'anonymous');
     wrap.appendChild(v);
   }
   // revoke any open blob
