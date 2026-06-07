@@ -10,6 +10,8 @@
 <script src="https://unpkg.com/idb-keyval@6/dist/umd.js"></script>
 
 <!-- Video.js 8 -->
+ <!-- <script type="module" src="https://cdn.jsdelivr.net/npm/@videojs/html/cdn/video.js"></script> -->
+
 <link href="https://vjs.zencdn.net/8.23.4/video-js.min.css" rel="stylesheet" />
 <script src="https://vjs.zencdn.net/8.23.4/video.min.js"></script>
 
@@ -879,6 +881,17 @@ const VR_PROJ_LABELS = {
 };
 const VR_PROJS = new Set(['360','360_LR','360_TB','180','180_LR','360_CUBE']);
 
+// Map our UI projection keys to the exact strings videojs-vr 2.x accepts
+// '180' in the plugin is actually '180_MONO' (half-sphere, mono)
+const VR_PROJ_PLUGIN_MAP = {
+  '360':      'equirectangular',
+  '360_LR':   '360_LR',
+  '360_TB':   '360_TB',
+  '180':      '180_MONO',
+  '180_LR':   '180_LR',
+  '360_CUBE': '360_CUBE',
+};
+
 // Video.js player instance (single, reused)
 let vjsPlayer = null;
 
@@ -1562,16 +1575,20 @@ async function openDetailView(index) {
 
   vjsPlayer.src({ src: blobUrl, type: file.type || 'video/mp4' });
 
-  // Attach VR plugin once player is ready (if not flat)
-  vjsPlayer.ready(() => {
-    if (vrProjection !== 'NONE') {
+  // Attach VR plugin only after loadedmetadata so Three.js geometry is ready.
+  // videojs-vr 2.x requires specific projection strings (e.g. '180_MONO', 'equirectangular').
+  if (vrProjection !== 'NONE') {
+    const pluginProj = VR_PROJ_PLUGIN_MAP[vrProjection] || vrProjection;
+    const onMeta = () => {
+      vjsPlayer.off('loadedmetadata', onMeta);
       try {
-        vjsPlayer.vr({ projection: vrProjection, forceCardboard: false });
+        vjsPlayer.vr({ projection: pluginProj, forceCardboard: false });
       } catch (err) {
         console.warn('videojs-vr init error:', err);
       }
-    }
-  });
+    };
+    vjsPlayer.one('loadedmetadata', onMeta);
+  }
 }
 
 // ── PROJECTION PICKER ─────────────────────────────────────────────────────────
