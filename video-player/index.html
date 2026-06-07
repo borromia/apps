@@ -1432,10 +1432,13 @@ let allEntries = null;
 async function collectAll(dirHandle, path = '') {
   const results = [];
   for await (const entry of dirHandle.values()) {
-    if (entry.kind !== 'directory') continue;
     const entryPath = path ? `${path}/${entry.name}` : entry.name;
-    results.push({ entry, path: entryPath, parentPath: path });
-    results.push(...await collectAll(entry, entryPath));
+    if (entry.kind === 'directory') {
+      results.push({ entry, path: entryPath, parentPath: path, isFile: false });
+      results.push(...await collectAll(entry, entryPath));
+    } else if (VIDEO_EXT.test(entry.name)) {
+      results.push({ entry, path: entryPath, parentPath: path, isFile: true });
+    }
   }
   return results;
 }
@@ -1448,18 +1451,40 @@ async function runSearch(query) {
   treeEl.innerHTML = '';
   const activeRoot = rootHandle || (remoteRoot ? new RemoteDirHandle(remoteRoot, remoteRoot) : null);
   if (!query) { allEntries = null; if (activeRoot) await buildTree(treeEl, activeRoot, 0); return; }
-  if (!allEntries) allEntries = await collectAll(activeRoot);
+  if (!allEntries) {
+    treeEl.innerHTML = '<div style="padding:16px 12px;color:var(--text-muted);font-size:12px;display:flex;align-items:center;gap:8px;"><span style="width:12px;height:12px;border:2px solid rgba(255,255,255,0.2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;flex-shrink:0"></span>Indexing…</div>';
+    allEntries = await collectAll(activeRoot);
+  }
+  treeEl.innerHTML = '';
   const q = query.toLowerCase();
   const matches = allEntries.filter(({ entry }) => entry.name.toLowerCase().includes(q));
   if (!matches.length) { treeEl.innerHTML = '<div id="search-empty">No results</div>'; return; }
-  for (const { entry, path, parentPath } of matches) {
+  for (const { entry, path, parentPath, isFile } of matches) {
     const row = document.createElement('div');
     row.className = 'search-result';
-    row.innerHTML = `<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span class="sr-name">${highlight(entry.name, query)}</span><span class="sr-path" title="${parentPath}">${parentPath || '/'}</span>`;
+    const iconSvg = isFile
+      ? `<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>`
+      : `<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
+    row.innerHTML = `${iconSvg}<span class="sr-name">${highlight(entry.name, query)}</span><span class="sr-path" title="${parentPath}">${parentPath || '/'}</span>`;
     row.addEventListener('click', async () => {
       document.querySelectorAll('.search-result').forEach(r => r.classList.remove('active'));
       row.classList.add('active');
-      await loadFolderVideos(entry, row, path);
+      if (isFile) {
+        // Load the parent folder, then open this specific file in detail view
+        const parentDirPath = parentPath;
+        let parentDir = activeRoot;
+        if (parentDirPath) {
+          for (const part of parentDirPath.split('/').filter(Boolean)) {
+            parentDir = await parentDir.getDirectoryHandle(part);
+          }
+        }
+        await loadFolderVideos(parentDir, row, parentDirPath);
+        // Find this file's index in the sorted list and open it
+        const idx = currentFileHandles.findIndex(h => h.name === entry.name);
+        if (idx !== -1) await openDetailView(idx);
+      } else {
+        await loadFolderVideos(entry, row, path);
+      }
     });
     treeEl.appendChild(row);
   }
