@@ -881,10 +881,13 @@ const VR_PROJ_LABELS = {
 };
 const VR_PROJS = new Set(['360','360_LR','360_TB','180','180_LR','360_CUBE']);
 
-// Map our UI projection keys to the exact strings videojs-vr 2.x accepts
-// '180' in the plugin is actually '180_MONO' (half-sphere, mono)
+// Map our UI projection keys to the exact strings videojs-vr 2.x accepts.
+// validProjections = ['360','360_LR','360_TB','360_CUBE','EAC','EAC_LR','NONE','AUTO',
+//                     'Sphere','Cube','equirectangular','180','180_LR','180_MONO']
+// '180_MONO' = full 180° hemisphere, mono (no stereo UV split)
+// '180_LR'   = full 180° hemisphere, stereo side-by-side
 const VR_PROJ_PLUGIN_MAP = {
-  '360':      'equirectangular',
+  '360':      '360',
   '360_LR':   '360_LR',
   '360_TB':   '360_TB',
   '180':      '180_MONO',
@@ -1573,22 +1576,20 @@ async function openDetailView(index) {
     html5: { vhs: { overrideNative: true } },
   });
 
-  vjsPlayer.src({ src: blobUrl, type: file.type || 'video/mp4' });
-
-  // Attach VR plugin only after loadedmetadata so Three.js geometry is ready.
-  // videojs-vr 2.x requires specific projection strings (e.g. '180_MONO', 'equirectangular').
+  // Attach VR plugin BEFORE setting src so the plugin's internal
+  // loadedmetadata listener fires on the new source.
+  // Use VR_PROJ_PLUGIN_MAP to translate our UI keys to the exact strings
+  // videojs-vr 2.x accepts (e.g. '180' → '180_MONO').
   if (vrProjection !== 'NONE') {
     const pluginProj = VR_PROJ_PLUGIN_MAP[vrProjection] || vrProjection;
-    const onMeta = () => {
-      vjsPlayer.off('loadedmetadata', onMeta);
-      try {
-        vjsPlayer.vr({ projection: pluginProj, forceCardboard: false });
-      } catch (err) {
-        console.warn('videojs-vr init error:', err);
-      }
-    };
-    vjsPlayer.one('loadedmetadata', onMeta);
+    try {
+      vjsPlayer.vr({ projection: pluginProj, forceCardboard: false });
+    } catch (err) {
+      console.warn('videojs-vr init error:', err);
+    }
   }
+
+  vjsPlayer.src({ src: blobUrl, type: file.type || 'video/mp4' });
 }
 
 // ── PROJECTION PICKER ─────────────────────────────────────────────────────────
