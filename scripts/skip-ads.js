@@ -37,7 +37,14 @@ document.showToastMsg = (message) => {
         pointer-events: none;
     `;
 
-    document.body.appendChild(toast);
+    // Append to fullscreen element if it exists, otherwise to body
+    const fullscreenElement = document.fullscreenElement || 
+                             document.webkitFullscreenElement || 
+                             document.mozFullScreenElement || 
+                             document.msFullscreenElement;
+    
+    const targetElement = fullscreenElement || document.body;
+    targetElement.appendChild(toast);
 
     setTimeout(() => {
         toast.style.animation = 'slideUp 0.3s ease-out';
