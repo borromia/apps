@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Shivam Goyal — Resume</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --sidebar-w: 210px;
+    --accent: #2c3e50;
+    --accent-light: #34495e;
+    --sidebar-bg: #2c3e50;
+    --sidebar-text: #ecf0f1;
+    --sidebar-muted: #bdc3c7;
+    --body-bg: #ffffff;
+    --body-text: #222;
+    --rule: #ccc;
+    --section-color: #2c3e50;
+  }
+
+  body {
+    font-family: 'Fontin', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+    font-size: 9.5pt;
+    background: #e8e8e8;
+    color: var(--body-text);
+    line-height: 1.45;
+  }
+
+  /* ── PAGE SHELL ── */
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 12mm auto;
+    background: var(--body-bg);
+    display: flex;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.22);
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    padding: 20px 14px 20px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .sidebar-name {
+    text-align: center;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+  }
+  .sidebar-name h1 {
+    font-size: 16pt;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+  }
+  .sidebar-name .subtitle {
+    font-size: 8pt;
+    font-variant: small-caps;
+    color: var(--sidebar-muted);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  .sb-heading {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-variant: small-caps;
+    font-size: 8.5pt;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #fff;
+    margin: 14px 0 6px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+  }
+  .sb-heading .dot {
+    font-size: 11pt;
+    color: var(--sidebar-muted);
+    line-height: 1;
+  }
+
+  .sb-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-left: 4px;
+  }
+  .sb-list li {
+    font-size: 8pt;
+    color: var(--sidebar-muted);
+    line-height: 1.4;
+    position: relative;
+    padding-left: 8px;
+  }
+  .sb-list li::before {
+    content: '›';
+    position: absolute;
+    left: 0;
+    color: rgba(255,255,255,0.4);
+  }
+  .sb-list li strong {
+    color: #fff;
+    font-weight: 600;
+  }
+  .sb-list li .grade {
+    font-variant: small-caps;
+    font-size: 7.5pt;
+  }
+
+  /* Contact row */
+  .sb-list li a {
+    color: #a8c8e8;
+    text-decoration: none;
+  }
+  .sb-list li a:hover { text-decoration: underline; }
+
+  .contact-icon {
+    display: inline-block;
+    width: 13px;
+    text-align: center;
+    margin-right: 3px;
+    color: rgba(255,255,255,0.5);
+    font-style: normal;
+  }
+
+  /* ── MAIN BODY ── */
+  .main {
+    flex: 1;
+    padding: 20px 22px 20px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* Section heading */
+  .main h2 {
+    font-size: 11pt;
+    font-variant: small-caps;
+    font-weight: 700;
+    color: var(--section-color);
+    letter-spacing: 0.06em;
+    border-bottom: 1.5px solid var(--section-color);
+    padding-bottom: 2px;
+    margin: 14px 0 8px;
+  }
+  .main h2:first-child { margin-top: 0; }
+
+  /* Body list */
+  .body-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .body-list > li { line-height: 1.4; }
+
+  .entry-title {
+    font-size: 9.5pt;
+    font-weight: 700;
+  }
+  .entry-title a {
+    color: var(--section-color);
+    font-weight: normal;
+    font-size: 8.5pt;
+  }
+  .entry-date {
+    float: right;
+    font-size: 8.5pt;
+    color: #555;
+    font-style: italic;
+  }
+
+  /* OSI-style table */
+  .entry-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 4px;
+    font-size: 8.5pt;
+  }
+  .entry-table td {
+    padding: 3px 6px 3px 0;
+    vertical-align: top;
+  }
+  .entry-table td:first-child {
+    font-variant: small-caps;
+    font-size: 8pt;
+    color: #444;
+    white-space: nowrap;
+    width: 62px;
+    padding-right: 6px;
+    border-right: 1px solid var(--rule);
+  }
+  .entry-table td:last-child {
+    padding-left: 8px;
+  }
+  .entry-table tr + tr td { padding-top: 4px; }
+
+  .bullet { display: block; padding-left: 0; margin-bottom: 2px; }
+  .bullet::before { content: '• '; }
+
+  /* Extra-curriculars table */
+  .xtra-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.5pt;
+  }
+  .xtra-table td {
+    padding: 3px 0 3px 0;
+    vertical-align: top;
+  }
+  .xtra-table td:first-child {
+    font-weight: 700;
+    white-space: nowrap;
+    width: 90px;
+    padding-right: 8px;
+  }
+
+  .small { font-size: 8.5pt; color: #333; }
+
+  @media print {
+    body { background: white; }
+    .page { margin: 0; box-shadow: none; width: 100%; min-height: auto; }
+    @page { size: A4; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+
+    <div class="sidebar-name">
+      <h1>Shivam Goyal</h1>
+      <div class="subtitle">Senior Undergraduate<br>IIT Kanpur</div>
+    </div>
+
+    <!-- Education -->
+    <div class="sb-heading"><span class="dot">○</span> Educational Qualifications</div>
+    <ul class="sb-list">
+      <li>
+        <strong>Indian Institute of Technology, Kanpur</strong><br>
+        B.Tech. in Materials Science and Engineering.
+        <span class="grade">CGPA, 7.85/10</span>
+      </li>
+      <li>
+        <strong>RPS Senior Secondary School</strong><br>
+        AISSCE Class XII. 84.8%
+      </li>
+      <li>
+        <strong>Yaduvanshi Shiksha Niketan</strong><br>
+        CBSE Class X. <span class="grade">CGPA, 9.8/10.0</span>
+      </li>
+    </ul>
+
+    <!-- Achievements -->
+    <div class="sb-heading"><span class="dot">○</span> Scholastic Achievements</div>
+    <ul class="sb-list">
+      <li><strong>2<sup>nd</sup></strong> best project among more than 50 participating projects in <span style="font-variant:small-caps">TA201</span>.</li>
+      <li>Secured AIR 6396 out of 160,000 aspirants, in <span style="font-variant:small-caps">JEE Advanced 2017</span>.</li>
+      <li>Secured AIR 8934 out of 1,100,000 aspirants, in <span style="font-variant:small-caps">JEE Mains 2017</span>.</li>
+    </ul>
+
+    <!-- Technical Skills -->
+    <div class="sb-heading"><span class="dot">○</span> Technical Skills</div>
+    <ul class="sb-list">
+      <li><strong>Languages:</strong> C, C++, JavaScript, Python, Bash, MATLAB, Golang</li>
+      <li><strong>Web Dev:</strong> Node.js, Angular, React, MongoDB, Nginx, Django</li>
+      <li><strong>DevOps:</strong> Docker, Jenkins, Kubernetes</li>
+      <li><strong>OS:</strong> Arch Linux, LFS, Ubuntu, Windows</li>
+    </ul>
+
+    <!-- Courses -->
+    <div class="sb-heading"><span class="dot">○</span> Relevant Courses</div>
+    <ul class="sb-list">
+      <li>Data Structures and Algorithms (A)</li>
+      <li>Modern Cryptology (A)</li>
+      <li>Introduction to Programming</li>
+      <li>Linear Algebra and ODE</li>
+      <li>Partial Differential Equations</li>
+      <li>Computational Methods in Engg.</li>
+      <li>Algorithms II <em>(ongoing)</em></li>
+      <li>Embedded and Cyber-Physical Systems <em>(ongoing)</em></li>
+    </ul>
+
+    <!-- Interests -->
+    <div class="sb-heading"><span class="dot">○</span> Interests</div>
+    <ul class="sb-list">
+      <li>Backend Programming, Database</li>
+      <li>Cyber-Security</li>
+      <li>Blockchain and DApps</li>
+      <li>DevOps, Site Reliability Engineering</li>
+      <li>Puzzles, Badminton, Drawing</li>
+    </ul>
+
+    <!-- Contact -->
+    <div class="sb-heading"><span class="dot">○</span> Contacts</div>
+    <ul class="sb-list">
+      <li><i class="contact-icon">✉</i><a href="mailto:shivgo@iitk.ac.in">shivgo@iitk.ac.in</a></li>
+      <li><i class="contact-icon">☎</i><a href="tel:+918059770401">+91-805-977-0401</a></li>
+      <li><i class="contact-icon">⌥</i><a href="https://github.com/shivamgly">github/shivamgly</a></li>
+      <li><i class="contact-icon">in</i><a href="https://www.linkedin.com/in/shivamgly/">linkedin/shivamgly</a></li>
+      <li><i class="contact-icon">🌐</i><a href="https://shivamgly.me">shivamgly.me</a></li>
+    </ul>
+
+  </aside>
+
+  <!-- ── MAIN BODY ── -->
+  <main class="main">
+
+    <!-- Professional Experience -->
+    <h2>Professional Experience</h2>
+    <ul class="body-list">
+
+      <li>
+        <div class="entry-title">
+          <span class="entry-date">Jun – Jul. 2020</span>
+          Full Stack Developer Intern at <span style="font-variant:small-caps">GuardianWealth Inc.</span>
+        </div>
+        <table class="entry-table">
+          <tr>
+            <td>Objective</td>
+            <td>
+              <span class="bullet">To develop the <strong>backend infrastructure</strong> of the Robo-advisory platform.</span>
+            </td>
+          </tr>
+          <tr>
+            <td>Strategy</td>
+            <td>
+              <span class="bullet">Used <span style="font-variant:small-caps">NodeJS</span> and <span style="font-variant:small-caps">MongoDB</span> as the core technology stack.</span>
+              <span class="bullet">Integrated external REST APIs to verify the user's <strong>KYC and Bank</strong> details.</span>
+              <span class="bullet">Measured user's <strong>risk-score</strong> based on the questionnaire and assigned a <strong>portfolio</strong>.</span>
+              <span class="bullet">Integrated the <span style="font-variant:small-caps">DriveWealth</span> <strong>stock brokerage service</strong> to transact stocks.</span>
+            </td>
+          </tr>
+          <tr>
+            <td>Impact</td>
+            <td>
+              <span class="bullet">Successfully completed the user onboarding stage of the platform.</span>
+              <span class="bullet">Hosted the development environment on Heroku with <strong>Docker</strong>.</span>
+            </td>
+          </tr>
+        </table>
+      </li>
+
+      <li>
+        <div class="entry-title">
+          <span class="entry-date">May – Aug. 2019</span>
+          Google Summer of Code 2019 at <span style="font-variant:small-caps">FFmpeg.</span>
+        </div>
+        <div style="font-size:8.5pt; margin-bottom:3px;">
+          <a href="https://summerofcode.withgoogle.com/archive/2019/projects/6056126536220672/" style="color:#2c3e50;">
+            DICOM Support in <span style="font-variant:small-caps">FFmpeg</span> (Project Page)
+          </a>
+        </div>
+        <table class="entry-table">
+          <tr>
+            <td>Objective</td>
+            <td><span class="bullet">To add the DICOM image file format support to <span style="font-variant:small-caps">FFmpeg</span>.</span></td>
+          </tr>
+          <tr>
+            <td>Strategy</td>
+            <td>
+              <span class="bullet">Comprehended the <strong>decoding and demuxing</strong> pipeline of <span style="font-variant:small-caps">FFmpeg</span>.</span>
+              <span class="bullet">Programmed a separate demuxer and decoder for the DICOM file format.</span>
+              <span class="bullet">Handled <strong>H.264, JPEG, PNG</strong> and other widely used compression standards.</span>
+            </td>
+          </tr>
+          <tr>
+            <td>Impact</td>
+            <td>
+              <span class="bullet">Successfully demuxed the DICOM medical tags containing the patient's data.</span>
+              <span class="bullet">Decoded the compressed pixel data from both single &amp; <strong>multi-frame</strong> DICOM.</span>
+            </td>
+          </tr>
+        </table>
+      </li>
+
+    </ul>
+
+    <!-- Positions of Responsibility -->
+    <h2>Positions of Responsibility</h2>
+    <ul class="body-list">
+
+      <li>
+        <div class="entry-title">
+          <span class="entry-date">May '19 – May '20</span>
+          Manager Web Development, <span style="font-variant:small-caps">Entrepreneurship Cell IIT Kanpur</span>
+        </div>
+        <table class="entry-table">
+          <tr>
+            <td>Leadership</td>
+            <td><span class="bullet"><strong>Recruited and guided</strong> a team of 10 secretaries to manage various services.</span></td>
+          </tr>
+          <tr>
+            <td>Initiatives</td>
+            <td>
+              <span class="bullet">An automated campus ambassador's portal to assign tasks to the 500+ CAs.</span>
+              <span class="bullet">A <strong>freelancers platform</strong> specifically for the campus students.</span>
+              <span class="bullet">Established <strong>CI/CD</strong> and automated builds in all of the web services.</span>
+            </td>
+          </tr>
+          <tr>
+            <td>Impact</td>
+            <td>
+              <span class="bullet">Successfully managed various websites &amp; portals and hosted on AWS.</span>
+              <span class="bullet">As a member of the core team, assisted in organizing various events.</span>
+            </td>
+          </tr>
+        </table>
+      </li>
+
+      <li>
+        <div class="entry-title">
+          <span class="entry-date">Feb – May. 2020</span>
+          Project Mentor, ACA IITK <span style="font-variant:small-caps">| What to Do?!</span>
+        </div>
+        <table class="entry-table">
+          <tr>
+            <td>Objective</td>
+            <td><span class="bullet">To make a todo app that helps in deciding on which task to focus first.</span></td>
+          </tr>
+          <tr>
+            <td>Strategy</td>
+            <td>
+              <span class="bullet">Selected a group of 10 mentees out of the total applicants.</span>
+              <span class="bullet">Integrated the well known <span style="font-variant:small-caps">Pomodoro Technique</span> in the app.</span>
+              <span class="bullet">Used MEAN stack for the web-app and React-Native for the Android/iOS app.</span>
+            </td>
+          </tr>
+          <tr>
+            <td>Impact</td>
+            <td><span class="bullet">Successfully built the platform and hosted the backend on AWS.</span></td>
+          </tr>
+        </table>
+      </li>
+
+      <li>
+        <div class="entry-title">
+          <span class="entry-date">May '18 – May '19</span>
+          Webmaster, <span style="font-variant:small-caps">Hall 5, IIT Kanpur</span>
+        </div>
+        <p class="small">Redesigned and revamped the website of Hall 5, IIT Kanpur. Developed Ask the HEC and Lost &amp; Found portal from scratch for the hall residents. Used Django and MySQL in the backend.</p>
+      </li>
+
+    </ul>
+
+    <!-- Projects -->
+    <h2>Projects</h2>
+    <ul class="body-list">
+      <li>
+        <div class="entry-title">
+          <span class="entry-date">May – Jun. 2020</span>
+          Oxygen Concentrator &nbsp;|&nbsp; <span style="font-weight:normal; font-size:8.5pt;">Course — MSE305A &nbsp;·&nbsp; Prof. Shashank Shekhar</span>
+        </div>
+        <p class="small">Wrote a term paper on oxygen concentrators, which are crucial devices in treating COVID-19 patients. Analyzed various mechanisms of separating oxygen from the air with a focus on membrane separation technology. Explained the working and synthesis of the membranes.</p>
+      </li>
+      <li>
+        <div class="entry-title">
+          <span class="entry-date">Oct – Nov. 2019</span>
+          Dislocation Dynamics &nbsp;|&nbsp; <span style="font-weight:normal; font-size:8.5pt;">Course — MSE313A &nbsp;·&nbsp; Prof. N.P. Gurao</span>
+        </div>
+        <p class="small">Simulated and analyzed various dislocation motions, including the well-known Frank-Read source dislocation movement mechanism. Used MATLAB and <span style="font-variant:small-caps">DDLab</span> for the simulation.</p>
+      </li>
+    </ul>
+
+    <!-- Coursera -->
+    <h2>Coursera Specializations</h2>
+    <ul class="body-list">
+      <li>
+        <div class="entry-title">Blockchain Specialization <span style="font-variant:small-caps; font-weight:normal">| Prof. Bina Ramamurthy</span></div>
+        <p class="small">Through the <strong>4 courses</strong> specialization, learnt the concepts that enable a blockchain protocol. Studied the architecture of decentralized systems and consensus protocols with their use.</p>
+      </li>
+      <li>
+        <div class="entry-title">Deep Learning Specialization <span style="font-variant:small-caps; font-weight:normal">| Prof. Andrew Ng</span></div>
+        <p class="small"><strong>5 courses</strong> on the development of cutting-edge AI technology. Covering hyperparameter tuning, convolutional neural networks with optimization techniques and industry applications.</p>
+      </li>
+      <li>
+        <div class="entry-title">Innovation: From Creativity to Entrepreneurship <span style="font-variant:small-caps; font-weight:normal">| Prof. Raj Echambadi</span></div>
+        <p class="small">A <strong>7 courses</strong> specialization on building and managing innovative organizations. Learnt to assess the feasibility of a new venture and the diversity of challenges involved.</p>
+      </li>
+    </ul>
+
+    <!-- Extra-Curriculars -->
+    <h2>Extra-Curriculars</h2>
+    <table class="xtra-table">
+      <tr>
+        <td>GCPM:</td>
+        <td class="small">Created a tool to <strong>virtualize</strong> Google Chrome web browser on Linux. Helps in making the browser portable and able to run multiple instances. The open-source codebase on Github has around <strong>5 daily unique visitors</strong>.</td>
+      </tr>
+      <tr>
+        <td>Firefox Addon:</td>
+        <td class="small">Created a Firefox browser addon to add keyboard shortcuts to <span style="font-variant:small-caps">Coursera</span>.</td>
+      </tr>
+      <tr>
+        <td>IITKMS:</td>
+        <td class="small">Designed the webpage of <span style="font-variant:small-caps">Society of Automotive Engineers</span>, IITKMS.</td>
+      </tr>
+      <tr>
+        <td>Multiplexer:</td>
+        <td class="small">A tool that helps in enhancing user's creativity and assists in inventing new ideas. It presents a new perspective for understanding existing ideas in the market using principals of recombinant innovation.</td>
+      </tr>
+      <tr>
+        <td>Cryptorithm:</td>
+        <td class="small">Developed a tool to cryptanalyze substitution and transposition ciphers.</td>
+      </tr>
+    </table>
+
+  </main>
+</div>
+</body>
+</html>
