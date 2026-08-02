@@ -25,15 +25,16 @@ document.showToastMsg = (message) => {
         top: 20px;
         left: 50%;
         transform: translateX(-50%);
-        background-color: rgba(0, 0, 0, 0.8);
+        background-color: rgba(0, 0, 0, 0.9);
         color: white;
         padding: 12px 24px;
         border-radius: 4px;
         font-size: 14px;
-        z-index: 10000;
+        z-index: 2147483647;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
         animation: slideDown 0.3s ease-out;
+        pointer-events: none;
     `;
 
     document.body.appendChild(toast);
