@@ -31,13 +31,6 @@ export const MinimalArtBg: React.FC = () => {
           <stop offset="100%" stopColor="#000000" stopOpacity="0" />
         </radialGradient>
 
-        {/* Sunbeam Light Rays */}
-        <linearGradient id="sunRay" x1="100%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#fef08a" stopOpacity="0.25" />
-          <stop offset="40%" stopColor="#fde047" stopOpacity="0.09" />
-          <stop offset="100%" stopColor="#eab308" stopOpacity="0" />
-        </linearGradient>
-
         {/* Dark fabric gradient matching the rich black/indigo tone */}
         <linearGradient id="bodyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#181824" />
@@ -76,27 +69,7 @@ export const MinimalArtBg: React.FC = () => {
       {/* 2. Sun Glow Aura in background */}
       <rect width="1024" height="683" fill="url(#sunGlow)" />
 
-      {/* 3. Balcony Terrace Railing (Matching photo / perspective) */}
-      <rect x="380" y="470" width="644" height="12" fill="#542e18" opacity="0.3" rx="1" />
-      <line x1="380" y1="470" x2="1024" y2="470" stroke="#ca8a04" strokeWidth="0.8" opacity="0.25" />
-      {[...Array(6)].map((_, i) => (
-        <line
-          key={i}
-          x1={480 + i * 105}
-          y1={482}
-          x2={480 + i * 105}
-          y2={683}
-          stroke="#542e18"
-          strokeWidth="1"
-          opacity="0.18"
-        />
-      ))}
-
-      {/* 4. Soft Sunbeams streaming from the upper-right foliage */}
-      <polygon points="940,0 1024,0 720,683 610,683" fill="url(#sunRay)" opacity="0.8" />
-      <polygon points="790,0 870,0 560,683 480,683" fill="url(#sunRay)" opacity="0.45" />
-
-      {/* 5. User's Exact Silhouette Body Fill */}
+      {/* 3. User's Exact Silhouette Body Fill */}
       <path
         fill="url(#bodyGradient)"
         d="
@@ -197,13 +170,6 @@ export const MinimalArtBg: React.FC = () => {
         strokeWidth="3.5"
         strokeLinecap="round"
       />
-
-      {/* Ambient subtle sunlight particles */}
-      <circle cx="510" cy="410" r="2" fill="#fef08a" opacity="0.65" />
-      <circle cx="485" cy="510" r="1.5" fill="#fde047" opacity="0.55" />
-      <circle cx="380" cy="270" r="1.8" fill="#fef08a" opacity="0.6" />
-      <circle cx="720" cy="230" r="2" fill="#fde047" opacity="0.4" />
-      <circle cx="860" cy="150" r="2.2" fill="#fef08a" opacity="0.5" />
     </svg>
   );
 };
