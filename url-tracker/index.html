@@ -349,8 +349,33 @@
       box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
     }
 
+    .textarea-body {
+      display: flex;
+      position: relative;
+      background: transparent;
+      min-height: 170px;
+    }
+
+    .line-numbers {
+      width: 44px;
+      min-width: 44px;
+      padding: 14px 10px 14px 6px;
+      text-align: right;
+      color: var(--text-dim);
+      font-family: 'SF Mono', Monaco, Menlo, Consolas, 'Ubuntu Mono', monospace;
+      font-size: 12.5px;
+      line-height: 1.65;
+      background: rgba(0, 0, 0, 0.25);
+      border-right: 1px solid var(--border);
+      user-select: none;
+      pointer-events: none;
+      overflow: hidden;
+      white-space: pre-line;
+      box-sizing: border-box;
+    }
+
     .url-textarea {
-      width: 100%;
+      flex: 1;
       min-height: 170px;
       max-height: 450px;
       padding: 14px 16px;
@@ -980,13 +1005,16 @@
 
       <div class="input-box-wrapper">
         <div class="textarea-container">
-          <textarea
-            id="url-input"
-            class="url-textarea"
-            placeholder="https://example.com/video1&#10;https://example.com/video2&#10;https://example.com/image3"
-            rows="6"
-            spellcheck="false"
-          ></textarea>
+          <div class="textarea-body">
+            <div class="line-numbers" id="line-numbers" aria-hidden="true">1</div>
+            <textarea
+              id="url-input"
+              class="url-textarea"
+              placeholder="https://example.com/video1&#10;https://example.com/video2&#10;https://example.com/image3"
+              rows="6"
+              spellcheck="false"
+            ></textarea>
+          </div>
 
           <div class="textarea-footer">
             <div class="live-tags">
@@ -1206,7 +1234,7 @@
      * }
      */
     let downloadRecords = [];
-    let collapsedDates = new Set();
+    let expandedDates = new Set();
 
     function loadRecords() {
       try {
@@ -1431,7 +1459,7 @@
 
       dateKeys.forEach(dateKey => {
         const items = groups[dateKey];
-        const isCollapsed = collapsedDates.has(dateKey);
+        const isCollapsed = !expandedDates.has(dateKey);
 
         html += `
           <div class="date-group ${isCollapsed ? 'collapsed' : ''}" data-date="${dateKey}">
@@ -1492,15 +1520,32 @@
     }
 
     function toggleDateGroup(dateKey) {
-      if (collapsedDates.has(dateKey)) {
-        collapsedDates.delete(dateKey);
+      if (expandedDates.has(dateKey)) {
+        expandedDates.delete(dateKey);
       } else {
-        collapsedDates.add(dateKey);
+        expandedDates.add(dateKey);
       }
       renderHistoryList();
     }
 
+    function updateLineNumbers() {
+      const textarea = document.getElementById('url-input');
+      const lineNumbers = document.getElementById('line-numbers');
+      if (!textarea || !lineNumbers) return;
+
+      const lines = textarea.value.split('\n');
+      const count = Math.max(1, lines.length);
+
+      let numStr = '';
+      for (let i = 1; i <= count; i++) {
+        numStr += i + '\n';
+      }
+      lineNumbers.textContent = numStr;
+      lineNumbers.scrollTop = textarea.scrollTop;
+    }
+
     function updateInputLiveStatus() {
+      updateLineNumbers();
       const urls = parseInputUrls();
       const existingSet = new Set(downloadRecords.map(r => r.url.toLowerCase()));
 
@@ -2008,10 +2053,15 @@
     document.addEventListener('DOMContentLoaded', () => {
       loadRecords();
       renderAll();
+      updateLineNumbers();
 
-      // Textarea input monitoring
+      // Textarea input & scroll monitoring
       const urlInput = document.getElementById('url-input');
       urlInput.addEventListener('input', updateInputLiveStatus);
+      urlInput.addEventListener('scroll', () => {
+        const lineNumbers = document.getElementById('line-numbers');
+        if (lineNumbers) lineNumbers.scrollTop = urlInput.scrollTop;
+      });
 
       // Main action buttons
       document.getElementById('btn-filter-downloaded').addEventListener('click', filterDownloaded);
@@ -2032,12 +2082,12 @@
 
       // Expand / Collapse All
       document.getElementById('btn-collapse-all').addEventListener('click', () => {
-        const dateKeys = Array.from(new Set(downloadRecords.map(r => r.dateStr || 'Unknown')));
-        dateKeys.forEach(k => collapsedDates.add(k));
+        expandedDates.clear();
         renderHistoryList();
       });
       document.getElementById('btn-expand-all').addEventListener('click', () => {
-        collapsedDates.clear();
+        const dateKeys = Array.from(new Set(downloadRecords.map(r => r.dateStr || 'Unknown')));
+        dateKeys.forEach(k => expandedDates.add(k));
         renderHistoryList();
       });
 
