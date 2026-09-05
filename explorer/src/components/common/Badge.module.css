@@ -13,9 +13,9 @@
 }
 
 .accent {
-  background: rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.35);
-  color: #a5b4fc;
+  background: rgba(0, 122, 204, 0.18);
+  border-color: rgba(0, 122, 204, 0.4);
+  color: #4fc1ff;
 }
 
 .success {

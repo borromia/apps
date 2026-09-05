@@ -1,21 +1,22 @@
 :root {
-  --bg: #121216;
-  --bg-subtle: #18181e;
-  --surface: rgba(30, 30, 38, 0.75);
-  --surface-hover: rgba(45, 45, 55, 0.85);
-  --surface-solid: #1e1e26;
-  --surface-card: rgba(255, 255, 255, 0.04);
+  --bg: #161514;
+  --bg-subtle: #1c1b19;
+  --surface: rgba(28, 27, 25, 0.82);
+  --surface-hover: rgba(44, 42, 38, 0.85);
+  --surface-solid: #21201d;
+  --surface-card: rgba(255, 255, 255, 0.035);
   --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
-  --accent: #6366f1;
-  --accent-hover: #4f46e5;
-  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --accent: #007acc;
+  --accent-hover: #0098ff;
+  --accent-muted: #3794ff;
+  --accent-gradient: linear-gradient(135deg, #007acc 0%, #0098ff 100%);
   --danger: #ef4444;
   --danger-hover: #dc2626;
-  --text: #f3f4f6;
-  --text-muted: #9ca3af;
-  --text-dim: #6b7280;
-  --topbar-h: 56px;
+  --text: #f4f3ef;
+  --text-muted: #9e9c94;
+  --text-dim: #706e67;
+  --topbar-h: 52px;
   --bottombar-h: 60px;
   --sidebar-w: 270px;
   --zoom: 1;
@@ -23,7 +24,7 @@
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-full: 9999px;
-  --glass-blur: blur(24px) saturate(180%);
+  --glass-blur: blur(20px) saturate(180%);
 }
 
 *, *::before, *::after {
@@ -115,4 +116,3 @@ input {
 .animate-drawer-in {
   animation: slideInLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-

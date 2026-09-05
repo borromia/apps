@@ -1,6 +1,6 @@
 .panel {
   padding: 10px 20px;
-  background: rgba(26, 26, 34, 0.72);
+  background: var(--surface);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid var(--border);
@@ -70,15 +70,15 @@
 }
 
 .ocrProgress {
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid rgba(99, 102, 241, 0.25);
+  background: rgba(0, 122, 204, 0.1);
+  border: 1px solid rgba(0, 122, 204, 0.25);
   border-radius: var(--radius-md);
   padding: 6px 10px;
   display: flex;
   flex-direction: column;
   gap: 4px;
   font-size: 11px;
-  color: #a5b4fc;
+  color: #4fc1ff;
 }
 
 .progressBarBg {

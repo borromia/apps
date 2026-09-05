@@ -1,5 +1,7 @@
 .splitter {
-  width: 5px;
+  width: 6px;
+  margin-left: -3px;
+  margin-right: -3px;
   cursor: col-resize;
   background: transparent;
   position: relative;

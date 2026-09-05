@@ -18,9 +18,10 @@
 }
 
 .active {
-  background: rgba(99, 102, 241, 0.18) !important;
+  background: rgba(0, 122, 204, 0.28) !important;
   color: #ffffff !important;
   font-weight: 500;
+  border-left: 2px solid var(--accent);
 }
 
 .nodeLeft {
@@ -53,7 +54,7 @@
 
 .folderIcon {
   flex-shrink: 0;
-  color: var(--accent);
+  color: #3794ff;
 }
 
 .label {
@@ -66,4 +67,3 @@
   display: flex;
   flex-direction: column;
 }
-
