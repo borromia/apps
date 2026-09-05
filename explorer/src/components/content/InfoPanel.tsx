@@ -41,23 +41,23 @@ export const InfoPanel: React.FC = () => {
         <div className={styles.titleGroup}>
           <h1 className={styles.title}>{folderName}</h1>
           {parentName && (
-            <div className={styles.subtitle}>
+            <span className={styles.subtitle}>
               in <Folder size={11} style={{ display: 'inline', verticalAlign: 'middle' }} />{' '}
               {parentName}
-            </div>
+            </span>
           )}
-          <div className={styles.metaRow}>
-            <span>{totalMedia} {totalMedia === 1 ? 'media item' : 'media items'}</span>
+          <span className={styles.metaRow}>
             <span>•</span>
-            <span>{formattedSize}</span>
-          </div>
+            <span>{totalMedia} {totalMedia === 1 ? 'item' : 'items'}</span>
+            <span>({formattedSize})</span>
+          </span>
         </div>
 
         <div className={styles.actions}>
           <Button
             size="sm"
             variant="ghost"
-            icon={<RefreshCw size={14} />}
+            icon={<RefreshCw size={13} />}
             onClick={refreshCurrent}
             title="Refresh directory"
           />
@@ -66,11 +66,11 @@ export const InfoPanel: React.FC = () => {
             <Button
               size="sm"
               variant="default"
-              icon={<Sparkles size={14} />}
+              icon={<Sparkles size={13} />}
               onClick={runOcr}
               disabled={progress.status === 'running'}
             >
-              {progress.status === 'running' ? 'Extracting...' : 'Extract & Tag'}
+              {progress.status === 'running' ? 'Reading...' : 'Extract & Tag'}
             </Button>
           )}
 
@@ -78,11 +78,11 @@ export const InfoPanel: React.FC = () => {
             <Button
               size="sm"
               variant="danger"
-              icon={<Trash2 size={14} />}
+              icon={<Trash2 size={13} />}
               onClick={trashCurrentFolder}
               title="Move folder to trash"
             >
-              Trash Folder
+              Trash
             </Button>
           )}
         </div>

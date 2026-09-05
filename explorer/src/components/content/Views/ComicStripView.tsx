@@ -13,9 +13,7 @@ export const ComicStripView: React.FC<ComicStripViewProps> = ({ items }) => {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        padding: '16px 20px 80px',
-        overflowY: 'auto',
-        flex: 1,
+        padding: '12px 20px 80px',
         width: '100%',
       }}
     >
@@ -30,4 +28,3 @@ export const ComicStripView: React.FC<ComicStripViewProps> = ({ items }) => {
     </div>
   );
 };
-

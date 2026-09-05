@@ -96,19 +96,17 @@ export const Layout: React.FC = () => {
               Select a folder from the explorer sidebar.
             </div>
           ) : (
-            <>
+            <div className={styles.viewContainer}>
               <InfoPanel />
 
-              <div className={styles.viewContainer}>
-                {mediaItems.length === 0 ? (
-                  <EmptyState type="no-media" />
-                ) : viewMode === 'tiles' ? (
-                  <TileGridView items={mediaItems} />
-                ) : (
-                  <ComicStripView items={mediaItems} />
-                )}
-              </div>
-            </>
+              {mediaItems.length === 0 ? (
+                <EmptyState type="no-media" />
+              ) : viewMode === 'tiles' ? (
+                <TileGridView items={mediaItems} />
+              ) : (
+                <ComicStripView items={mediaItems} />
+              )}
+            </div>
           )}
         </main>
       </div>
@@ -128,4 +126,3 @@ export const Layout: React.FC = () => {
     </div>
   );
 };
-
