@@ -986,6 +986,14 @@
             </svg>
             Paste
           </button>
+          <button class="btn btn-sm" id="btn-unwrap-json" title="Unwrap JSON array into newline-separated URLs">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1"/>
+              <path d="M16 21h1a2 2 0 0 0 2-2v-5a2 2 0 0 1 2-2 2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/>
+              <polyline points="10 9 14 12 10 15"/>
+            </svg>
+            Unwrap JSON
+          </button>
           <button class="btn btn-sm" id="btn-extract-urls" title="Extract URLs from raw text">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"/>
@@ -1831,7 +1839,74 @@
       }
     }
 
-    // 5. Extract URLs from messy raw text
+    // 5. Unwrap JSON in textbox to newline-separated URLs
+    function unwrapJson() {
+      const raw = document.getElementById('url-input').value.trim();
+      if (!raw) {
+        showToast('Textbox is empty', 'info');
+        return;
+      }
+
+      let parsed = null;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (e) {
+        try {
+          const relaxed = raw.replace(/'/g, '"');
+          parsed = JSON.parse(relaxed);
+        } catch (e2) {
+          const matchArray = raw.match(/\[[\s\S]*\]/);
+          if (matchArray) {
+            try {
+              parsed = JSON.parse(matchArray[0].replace(/'/g, '"'));
+            } catch (e3) {}
+          }
+        }
+      }
+
+      const extractedUrls = [];
+
+      function collectUrls(item) {
+        if (!item) return;
+        if (typeof item === 'string') {
+          const norm = normalizeUrl(item);
+          if (norm) extractedUrls.push(norm);
+        } else if (Array.isArray(item)) {
+          item.forEach(collectUrls);
+        } else if (typeof item === 'object') {
+          if (item.url) collectUrls(item.url);
+          else if (item.link) collectUrls(item.link);
+          else if (item.href) collectUrls(item.href);
+          else {
+            Object.values(item).forEach(collectUrls);
+          }
+        }
+      }
+
+      if (parsed !== null) {
+        collectUrls(parsed);
+      } else {
+        const matches = raw.match(/"([^"]+)"|'([^']+)'/g);
+        if (matches && matches.length > 0) {
+          matches.forEach(m => {
+            const clean = m.replace(/^['"]|['"]$/g, '').trim();
+            const norm = normalizeUrl(clean);
+            if (norm) extractedUrls.push(norm);
+          });
+        }
+      }
+
+      if (extractedUrls.length > 0) {
+        document.getElementById('url-input').value = extractedUrls.join('\n');
+        updateInputLiveStatus();
+        showToast(`Unwrapped ${extractedUrls.length} URLs from JSON`, 'success');
+        showBanner(`Unwrapped ${extractedUrls.length} URL${extractedUrls.length === 1 ? '' : 's'} from JSON format.`, 'success');
+      } else {
+        showToast('Could not find any URLs in JSON data', 'error');
+      }
+    }
+
+    // 6. Extract URLs from messy raw text
     function extractUrlsFromText() {
       const raw = document.getElementById('url-input').value;
       if (!raw.trim()) {
@@ -2171,6 +2246,7 @@
       document.getElementById('btn-dedup-box').addEventListener('click', deduplicateBox);
       document.getElementById('btn-clear-box').addEventListener('click', clearBox);
       document.getElementById('btn-paste-clip').addEventListener('click', pasteFromClipboard);
+      document.getElementById('btn-unwrap-json').addEventListener('click', unwrapJson);
       document.getElementById('btn-extract-urls').addEventListener('click', extractUrlsFromText);
       document.getElementById('btn-copy-box').addEventListener('click', copyBoxUrls);
       document.getElementById('btn-close-banner').addEventListener('click', hideBanner);
