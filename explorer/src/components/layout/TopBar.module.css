@@ -1,6 +1,10 @@
 .topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   height: var(--topbar-h);
-  background: rgba(22, 22, 28, 0.75);
+  background: rgba(20, 20, 26, 0.72);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-bottom: 1px solid var(--border);
@@ -10,7 +14,6 @@
   padding: 0 16px;
   gap: 12px;
   z-index: 100;
-  flex-shrink: 0;
 }
 
 .leftGroup {

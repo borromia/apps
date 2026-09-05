@@ -9,6 +9,7 @@
   overflow: hidden;
   position: relative;
   user-select: none;
+  padding-top: var(--topbar-h);
 }
 
 .header {
@@ -100,4 +101,3 @@
   overflow-x: hidden;
   padding: 8px 4px 20px;
 }
-

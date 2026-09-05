@@ -90,9 +90,17 @@ export const Layout: React.FC = () => {
           )}
 
           {!isConnected ? (
-            <EmptyState type="no-source" />
+            <div style={{ paddingTop: 'var(--topbar-h)', height: '100%' }}>
+              <EmptyState type="no-source" />
+            </div>
           ) : !currentListing ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-dim)' }}>
+            <div
+              style={{
+                paddingTop: 'calc(var(--topbar-h) + 40px)',
+                textAlign: 'center',
+                color: 'var(--text-dim)',
+              }}
+            >
               Select a folder from the explorer sidebar.
             </div>
           ) : (

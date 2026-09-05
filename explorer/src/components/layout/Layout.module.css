@@ -5,6 +5,7 @@
   width: 100vw;
   overflow: hidden;
   background: var(--bg);
+  position: relative;
 }
 
 .bodyContainer {
@@ -12,6 +13,7 @@
   flex: 1;
   overflow: hidden;
   position: relative;
+  height: 100%;
 }
 
 .mainContent {
@@ -21,6 +23,7 @@
   overflow: hidden;
   background: var(--bg);
   position: relative;
+  height: 100%;
 }
 
 .viewContainer {
@@ -30,6 +33,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
+  padding-top: var(--topbar-h);
 }
 
 .loadingOverlay {
@@ -47,7 +51,7 @@
 
 @media (max-width: 767px) {
   .viewContainer {
+    padding-top: var(--topbar-h);
     padding-bottom: var(--bottombar-h);
   }
 }
-
