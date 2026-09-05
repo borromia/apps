@@ -1,0 +1,69 @@
+.nodeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  font-size: 13px;
+  color: var(--text-muted);
+  gap: 6px;
+  margin-bottom: 1px;
+}
+
+.nodeRow:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.active {
+  background: rgba(99, 102, 241, 0.18) !important;
+  color: #ffffff !important;
+  font-weight: 500;
+}
+
+.nodeLeft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--text-dim);
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+  color: var(--text-muted);
+}
+
+.chevronHidden {
+  visibility: hidden;
+}
+
+.folderIcon {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.children {
+  display: flex;
+  flex-direction: column;
+}
+
