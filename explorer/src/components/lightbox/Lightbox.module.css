@@ -74,8 +74,6 @@
   position: relative;
   overflow: hidden;
   padding: 16px;
-  perspective: 2000px;
-  perspective-origin: 50% 50%;
 }
 
 .bookStage {
@@ -83,189 +81,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  max-width: 100%;
-  max-height: 100%;
-  transform-style: preserve-3d;
+  width: 100%;
+  height: 100%;
 }
 
-.pageLeaf {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  max-width: 100%;
-  max-height: 100%;
-  transform-style: preserve-3d;
-}
-
-/* Outgoing curling page on Next (turns left like a book leaf) */
-.turningLeafNext {
+.threeCanvasStage {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transform-origin: left center;
-  transform-style: preserve-3d;
-  animation: appleBookCurlNext 0.52s cubic-bezier(0.25, 0.9, 0.35, 1) forwards;
   z-index: 10;
   pointer-events: none;
-}
-
-/* Incoming turning page on Prev (unfurls from left spine) */
-.turningLeafPrev {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transform-origin: left center;
-  transform-style: preserve-3d;
-  animation: appleBookCurlPrev 0.52s cubic-bezier(0.2, 0.85, 0.4, 1) forwards;
-  z-index: 10;
-  pointer-events: none;
-}
-
-/* Dynamic specular curl sheen & depth shadow */
-.curlSheenNext {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(
-    90deg,
-    rgba(0, 0, 0, 0.65) 0%,
-    rgba(0, 0, 0, 0.25) 15%,
-    rgba(255, 255, 255, 0.28) 45%,
-    rgba(0, 0, 0, 0.35) 70%,
-    transparent 100%
-  );
-  animation: sheenSweepNext 0.52s ease-in-out forwards;
-  pointer-events: none;
-  z-index: 5;
-}
-
-.curlSheenPrev {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(0, 0, 0, 0.35) 30%,
-    rgba(255, 255, 255, 0.28) 55%,
-    rgba(0, 0, 0, 0.25) 85%,
-    rgba(0, 0, 0, 0.65) 100%
-  );
-  animation: sheenSweepPrev 0.52s ease-in-out forwards;
-  pointer-events: none;
-  z-index: 5;
-}
-
-/* Ambient shadow on the underneath page */
-.underneathShadow {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.15) 35%, transparent 70%);
-  animation: shadowFadeOut 0.52s ease-out forwards;
-  pointer-events: none;
-  z-index: 4;
-}
-
-/* Underside / backside of paper leaf */
-.paperBackside {
-  position: absolute;
-  inset: 0;
-  backface-visibility: visible;
-  transform: rotateY(180deg);
-  background: linear-gradient(135deg, #1c1c22 0%, #262630 50%, #18181e 100%);
-  border-radius: var(--radius-sm);
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.7);
-  pointer-events: none;
-  z-index: 1;
-}
-
-@keyframes appleBookCurlNext {
-  0% {
-    transform: rotateY(0deg) translateZ(0px);
-    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.4));
-  }
-  35% {
-    transform: rotateY(-55deg) translateZ(40px) scale(0.985);
-    filter: drop-shadow(-15px 20px 30px rgba(0, 0, 0, 0.6));
-  }
-  70% {
-    transform: rotateY(-115deg) translateZ(50px) scale(0.975);
-    filter: drop-shadow(-30px 20px 40px rgba(0, 0, 0, 0.7));
-  }
-  100% {
-    transform: rotateY(-180deg) translateZ(0px);
-    filter: drop-shadow(0 0 0 transparent);
-    opacity: 0;
-  }
-}
-
-@keyframes appleBookCurlPrev {
-  0% {
-    transform: rotateY(-180deg) translateZ(0px);
-    opacity: 0;
-    filter: drop-shadow(0 0 0 transparent);
-  }
-  15% {
-    opacity: 1;
-  }
-  45% {
-    transform: rotateY(-115deg) translateZ(50px) scale(0.975);
-    filter: drop-shadow(-30px 20px 40px rgba(0, 0, 0, 0.7));
-  }
-  75% {
-    transform: rotateY(-45deg) translateZ(35px) scale(0.985);
-    filter: drop-shadow(-15px 15px 25px rgba(0, 0, 0, 0.5));
-  }
-  100% {
-    transform: rotateY(0deg) translateZ(0px);
-    opacity: 1;
-    filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.5));
-  }
-}
-
-@keyframes shadowFadeOut {
-  0% {
-    opacity: 0.85;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes sheenSweepNext {
-  0% {
-    opacity: 0;
-  }
-  30% {
-    opacity: 0.85;
-  }
-  75% {
-    opacity: 0.7;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes sheenSweepPrev {
-  0% {
-    opacity: 0;
-  }
-  30% {
-    opacity: 0.85;
-  }
-  75% {
-    opacity: 0.7;
-  }
-  100% {
-    opacity: 0;
-  }
 }
 
 .mediaImage {
@@ -337,4 +166,3 @@
     right: 8px;
   }
 }
-
