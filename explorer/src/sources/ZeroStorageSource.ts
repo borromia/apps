@@ -84,6 +84,19 @@ class RateLimiter {
   }
 }
 
+// Global request cache across component remounts, navigations, and instances (excluding binary downloads)
+const globalZeroStorageApiCache = new Map<string, any>();
+const globalZeroStorageInFlight = new Map<string, Promise<any>>();
+
+if (typeof window !== 'undefined') {
+  (window as any).__ZEROSTORAGE_API_CACHE__ = globalZeroStorageApiCache;
+}
+
+export function clearZeroStorageApiCache(): void {
+  globalZeroStorageApiCache.clear();
+  globalZeroStorageInFlight.clear();
+}
+
 export class ZeroStorageSource implements StorageSource {
   readonly id = 'zerostorage';
   readonly name = 'ZeroStorage Cloud';
@@ -166,6 +179,7 @@ export class ZeroStorageSource implements StorageSource {
     this.filesByFolderId.clear();
     this.fileIdMap.clear();
     this.downloadUrlCache.clear();
+    clearZeroStorageApiCache();
   }
 
   /**
@@ -208,23 +222,56 @@ export class ZeroStorageSource implements StorageSource {
       throw new Error('ZeroStorage API key is missing.');
     }
 
+    const method = (options.method || 'GET').toUpperCase();
+    const isGet = method === 'GET';
+    const cacheKey = `${this.config.apiKey}:${endpoint}`;
+
+    if (isGet) {
+      if (globalZeroStorageApiCache.has(cacheKey)) {
+        return globalZeroStorageApiCache.get(cacheKey) as T;
+      }
+      if (globalZeroStorageInFlight.has(cacheKey)) {
+        return globalZeroStorageInFlight.get(cacheKey) as Promise<T>;
+      }
+    }
+
     const url = `${this.apiBaseUrl}${endpoint}`;
     const headers: HeadersInit = {
       'x-api-key': this.config.apiKey,
       ...options.headers,
     };
 
-    const response = await this.fetchWithRateLimit(url, {
-      ...options,
-      headers,
-    });
+    const fetchPromise = (async () => {
+      try {
+        const response = await this.fetchWithRateLimit(url, {
+          ...options,
+          headers,
+        });
 
-    if (!response.ok) {
-      const errText = await response.text().catch(() => response.statusText);
-      throw new Error(`ZeroStorage API error (${response.status}): ${errText}`);
+        if (!response.ok) {
+          const errText = await response.text().catch(() => response.statusText);
+          throw new Error(`ZeroStorage API error (${response.status}): ${errText}`);
+        }
+
+        const data = (await response.json()) as T;
+        if (isGet) {
+          globalZeroStorageApiCache.set(cacheKey, data);
+        } else {
+          clearZeroStorageApiCache();
+        }
+        return data;
+      } finally {
+        if (isGet) {
+          globalZeroStorageInFlight.delete(cacheKey);
+        }
+      }
+    })();
+
+    if (isGet) {
+      globalZeroStorageInFlight.set(cacheKey, fetchPromise);
     }
 
-    return (await response.json()) as T;
+    return fetchPromise;
   }
 
   /**
