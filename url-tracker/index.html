@@ -1016,6 +1016,14 @@
             Mark as Downloaded
           </button>
 
+          <button class="btn btn-rose" id="btn-remove-history" title="Remove entered URLs from download history">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+            Remove from History
+          </button>
+
           <button class="btn" id="btn-copy-box" title="Copy current URLs in the box">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -1071,6 +1079,11 @@
           </svg>
           <input type="text" id="search-history" class="search-input" placeholder="Search by URL, domain, or date..." />
         </div>
+
+        <button class="btn btn-sm btn-rose" id="btn-delete-selected" style="display:none;" title="Delete selected items from history">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Delete Selected (<span id="selected-count">0</span>)
+        </button>
 
         <select id="filter-domain" class="btn btn-sm" style="background:var(--bg-card-solid);">
           <option value="ALL">All Domains</option>
@@ -1445,6 +1458,7 @@
               ${items.map(item => `
                 <div class="url-item" data-id="${item.id}">
                   <div class="url-left">
+                    <input type="checkbox" class="url-chk" value="${item.id}" onchange="updateSelectedCount()" style="accent-color:var(--rose); cursor:pointer; width:15px; height:15px; flex-shrink:0;" title="Select to delete" />
                     <span class="domain-tag">${escapeHtml(item.domain)}</span>
                     <div class="url-link-wrap">
                       <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="url-link" title="${escapeHtml(item.url)}">
@@ -1474,6 +1488,7 @@
       });
 
       container.innerHTML = html;
+      updateSelectedCount();
     }
 
     function toggleDateGroup(dateKey) {
@@ -1597,7 +1612,57 @@
       }
     }
 
-    // 3. Clear Textbox
+    // 3. REMOVE FROM DOWNLOAD HISTORY: Removes entered URLs from download history
+    function removeFromHistory() {
+      const urls = parseInputUrls();
+      if (urls.length === 0) {
+        showToast('Please enter URLs in the box to remove', 'info');
+        return;
+      }
+
+      const targetSet = new Set(urls.map(u => u.toLowerCase()));
+      const initialCount = downloadRecords.length;
+      downloadRecords = downloadRecords.filter(r => !targetSet.has(r.url.toLowerCase()));
+      const removedCount = initialCount - downloadRecords.length;
+
+      if (removedCount > 0) {
+        saveRecords();
+        showToast(`Removed ${removedCount} URL${removedCount === 1 ? '' : 's'} from download history`, 'success');
+        showBanner(`Successfully removed ${removedCount} URL${removedCount === 1 ? '' : 's'} from download history.`, 'success');
+      } else {
+        showToast('None of the entered URLs were found in download history', 'info');
+        showBanner('None of the entered URLs were found in download history.', 'info');
+      }
+    }
+
+    // Selected Items for Bulk Delete
+    function updateSelectedCount() {
+      const checked = document.querySelectorAll('.url-chk:checked');
+      const count = checked.length;
+      const btn = document.getElementById('btn-delete-selected');
+      const span = document.getElementById('selected-count');
+      if (span) span.textContent = count;
+      if (btn) {
+        btn.style.display = count > 0 ? 'inline-flex' : 'none';
+      }
+    }
+
+    function deleteSelectedRecords() {
+      const checked = Array.from(document.querySelectorAll('.url-chk:checked')).map(el => el.value);
+      if (checked.length === 0) return;
+
+      if (confirm(`Delete ${checked.length} selected URL${checked.length === 1 ? '' : 's'} from download history?`)) {
+        const toDelete = new Set(checked);
+        const countBefore = downloadRecords.length;
+        downloadRecords = downloadRecords.filter(r => !toDelete.has(r.id));
+        const removed = countBefore - downloadRecords.length;
+        saveRecords();
+        showToast(`Deleted ${removed} record${removed === 1 ? '' : 's'}`, 'info');
+        updateSelectedCount();
+      }
+    }
+
+    // 4. Clear Textbox
     function clearBox() {
       document.getElementById('url-input').value = '';
       updateInputLiveStatus();
@@ -1951,6 +2016,7 @@
       // Main action buttons
       document.getElementById('btn-filter-downloaded').addEventListener('click', filterDownloaded);
       document.getElementById('btn-mark-downloaded').addEventListener('click', markAsDownloaded);
+      document.getElementById('btn-remove-history').addEventListener('click', removeFromHistory);
       document.getElementById('btn-clear-box').addEventListener('click', clearBox);
       document.getElementById('btn-paste-clip').addEventListener('click', pasteFromClipboard);
       document.getElementById('btn-extract-urls').addEventListener('click', extractUrlsFromText);
@@ -1962,6 +2028,7 @@
       document.getElementById('search-history').addEventListener('input', renderHistoryList);
       document.getElementById('filter-domain').addEventListener('change', renderHistoryList);
       document.getElementById('sort-order').addEventListener('change', renderHistoryList);
+      document.getElementById('btn-delete-selected').addEventListener('click', deleteSelectedRecords);
 
       // Expand / Collapse All
       document.getElementById('btn-collapse-all').addEventListener('click', () => {
