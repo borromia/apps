@@ -23,6 +23,10 @@ export const TreeNode: React.FC<TreeNodeProps> = ({ node, depth = 0 }) => {
   const [isLoadingChildren, setIsLoadingChildren] = useState<boolean>(false);
 
   useEffect(() => {
+    setChildren(null);
+  }, [activeSource, node.path]);
+
+  useEffect(() => {
     if (isExpanded && children === null && activeSource) {
       setIsLoadingChildren(true);
       activeSource

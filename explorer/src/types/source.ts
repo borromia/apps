@@ -41,7 +41,7 @@ export interface StorageSource {
   readonly isWritable: boolean;
 
   // Connection Lifecycle
-  connect(): Promise<boolean>;
+  connect(forceNew?: boolean): Promise<boolean>;
   disconnect?(): Promise<void>;
   isConnected(): boolean;
   

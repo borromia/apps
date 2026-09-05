@@ -23,8 +23,23 @@ export class FileSystemSource implements StorageSource {
     }
   }
 
-  async connect(): Promise<boolean> {
+  async connect(forcePicker = false): Promise<boolean> {
     try {
+      if (forcePicker) {
+        if (typeof window !== 'undefined' && 'showDirectoryPicker' in window) {
+          const handle = await (window as any).showDirectoryPicker({
+            mode: 'readwrite',
+          });
+          this.rootHandle = handle;
+          await saveFileSystemHandle(handle);
+          this.cachedFolders = null;
+          return true;
+        } else {
+          alert('File System Access API is not supported in this browser. Please use Chrome or Edge.');
+          return false;
+        }
+      }
+
       if (!this.rootHandle) {
         // Try restoring from IndexedDB
         const saved = await getSavedFileSystemHandle();

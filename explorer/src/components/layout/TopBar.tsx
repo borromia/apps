@@ -64,7 +64,11 @@ export const TopBar: React.FC = () => {
         </Button>
 
         {isConnected && activeSource && (
-          <div className={styles.sourcePill} title={activeSource.getRootName()}>
+          <div
+            className={styles.sourcePill}
+            title={`${activeSource.getRootName()} (Click to change storage)`}
+            onClick={openSourceSelector}
+          >
             {activeSource.getRootName()}
           </div>
         )}

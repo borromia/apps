@@ -15,7 +15,8 @@ interface SourceContextValue {
   closeSourceSelector: () => void;
   openS3Config: () => void;
   closeS3Config: () => void;
-  selectSource: (sourceId: string) => Promise<boolean>;
+  selectSource: (sourceId: string, forceNew?: boolean) => Promise<boolean>;
+  pickNewFileSystemFolder: () => Promise<boolean>;
   configureS3: (creds: S3Credentials) => Promise<boolean>;
   disconnectSource: () => Promise<void>;
 }
@@ -70,25 +71,42 @@ export const SourceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, []);
 
-  const selectSource = useCallback(async (sourceId: string): Promise<boolean> => {
+  const selectSource = useCallback(async (sourceId: string, forceNew = false): Promise<boolean> => {
     const src = sourceRegistry.get(sourceId);
     if (!src) return false;
 
-    if (src.type === 's3' && !src.isConnected()) {
+    if (src.type === 's3' && (!src.isConnected() || forceNew)) {
       setIsS3ConfigOpen(true);
       return false;
     }
 
     try {
-      const ok = await src.connect();
+      const ok = await src.connect(forceNew);
       if (ok) {
-        setActiveSource(src);
+        // Use fresh object wrapper so state update triggers properly
+        setActiveSource(Object.assign(Object.create(Object.getPrototypeOf(src)), src));
         setIsConnected(true);
         setIsSourceSelectorOpen(false);
         return true;
       }
     } catch (err) {
       console.error('Error selecting source:', err);
+    }
+    return false;
+  }, []);
+
+  const pickNewFileSystemFolder = useCallback(async (): Promise<boolean> => {
+    let fsSource = sourceRegistry.get('local-fs');
+    if (!fsSource) {
+      fsSource = new FileSystemSource();
+      sourceRegistry.register(fsSource);
+    }
+    const ok = await fsSource.connect(true);
+    if (ok) {
+      setActiveSource(Object.assign(Object.create(Object.getPrototypeOf(fsSource)), fsSource));
+      setIsConnected(true);
+      setIsSourceSelectorOpen(false);
+      return true;
     }
     return false;
   }, []);
@@ -114,6 +132,7 @@ export const SourceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     setActiveSource(null);
     setIsConnected(false);
+    setIsSourceSelectorOpen(false);
   }, [activeSource]);
 
   const value: SourceContextValue = {
@@ -129,6 +148,7 @@ export const SourceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     openS3Config: () => setIsS3ConfigOpen(true),
     closeS3Config: () => setIsS3ConfigOpen(false),
     selectSource,
+    pickNewFileSystemFolder,
     configureS3,
     disconnectSource,
   };

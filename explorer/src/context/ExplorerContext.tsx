@@ -101,6 +101,24 @@ export const ExplorerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch (err: any) {
       console.error('Failed to load directory:', err);
       setError(err.message || 'Failed to read directory contents');
+      // If a subpath fails (e.g. from previous source session), fallback to root directory
+      if (path !== '') {
+        try {
+          const rootListing = await activeSource.listDirectory('');
+          setCurrentListing(rootListing);
+          setCurrentPath('');
+          setExpandedPaths(new Set(['']));
+          await saveLastPath('');
+          if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('folder');
+            window.history.replaceState({}, '', url.toString());
+          }
+          setError(null);
+        } catch (fallbackErr) {
+          console.error('Root fallback failed:', fallbackErr);
+        }
+      }
     } finally {
       setIsLoading(false);
     }
@@ -109,6 +127,7 @@ export const ExplorerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Auto load root or last path on source connection
   useEffect(() => {
     if (isConnected && activeSource) {
+      setExpandedPaths(new Set(['']));
       const urlParams = new URLSearchParams(window.location.search);
       const urlFolder = urlParams.get('folder');
 
@@ -123,6 +142,7 @@ export const ExplorerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setCurrentListing(null);
       setCurrentPath('');
       setCurrentTags([]);
+      setExpandedPaths(new Set(['']));
     }
   }, [isConnected, activeSource, loadPath]);
 
