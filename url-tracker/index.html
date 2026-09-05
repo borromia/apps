@@ -993,6 +993,12 @@
             </svg>
             Extract URLs
           </button>
+          <button class="btn btn-sm" id="btn-dedup-box" title="Remove duplicate URLs in text box">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Deduplicate
+          </button>
           <button class="btn btn-sm" id="btn-clear-box" title="Clear textbox">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"/>
@@ -1021,7 +1027,7 @@
               <span class="tag-pill" id="badge-line-count">0 Lines</span>
               <span class="tag-pill tag-new" id="badge-new-count">0 New</span>
               <span class="tag-pill tag-downloaded" id="badge-downloaded-count">0 Already Downloaded</span>
-              <span class="tag-pill tag-invalid" id="badge-invalid-count" style="display:none;">0 Invalid</span>
+              <span class="tag-pill tag-invalid" id="badge-dup-count" style="display:none;">0 Duplicates</span>
             </div>
             <div id="box-status-hint">Enter URLs to check status</div>
           </div>
@@ -1030,7 +1036,7 @@
         <!-- Action Buttons -->
         <div class="actions-grid">
           <!-- Primary action buttons specified by user -->
-          <button class="btn btn-primary" id="btn-filter-downloaded" title="Remove already downloaded URLs from the text box">
+          <button class="btn btn-primary" id="btn-filter-downloaded" title="Remove already downloaded and duplicate URLs from the text box">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
             </svg>
@@ -1050,6 +1056,14 @@
               <line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
             Remove from History
+          </button>
+
+          <button class="btn" id="btn-copy-json" title="Copy URLs as a JSON array of strings">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1"/>
+              <path d="M16 21h1a2 2 0 0 0 2-2v-5a2 2 0 0 1 2-2 2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/>
+            </svg>
+            Copy as JSON
           </button>
 
           <button class="btn" id="btn-copy-box" title="Copy current URLs in the box">
@@ -1551,22 +1565,38 @@
 
       let newCount = 0;
       let downloadedCount = 0;
+      const seenInBox = new Set();
+      let dupCount = 0;
 
       urls.forEach(u => {
-        if (existingSet.has(u.toLowerCase())) {
+        const lower = u.toLowerCase();
+        if (seenInBox.has(lower)) {
+          dupCount++;
+        } else {
+          seenInBox.add(lower);
+        }
+
+        if (existingSet.has(lower)) {
           downloadedCount++;
         } else {
           newCount++;
         }
       });
 
-      document.getElementById('badge-line-count').textContent = `${urls.length} ${urls.length === 1 ? 'URL' : 'URLs'}`;
+      document.getElementById('badge-line-count').textContent = `${urls.length} ${urls.length === 1 ? 'Line' : 'Lines'}`;
       document.getElementById('badge-new-count').textContent = `${newCount} New`;
       document.getElementById('badge-downloaded-count').textContent = `${downloadedCount} Downloaded`;
+
+      const dupBadge = document.getElementById('badge-dup-count');
+      if (dupBadge) {
+        dupBadge.style.display = dupCount > 0 ? 'inline-flex' : 'none';
+        dupBadge.textContent = `${dupCount} Duplicate${dupCount === 1 ? '' : 's'}`;
+      }
 
       const hint = document.getElementById('box-status-hint');
       if (urls.length === 0) {
         hint.textContent = 'Paste URLs to check status';
+        hint.style.color = 'var(--text-muted)';
       } else if (downloadedCount > 0 && newCount === 0) {
         hint.textContent = '⚠️ All entered URLs have already been downloaded';
         hint.style.color = 'var(--amber)';
@@ -1583,7 +1613,7 @@
        Action Handlers
        ─────────────────────────────────────────────────────────── */
 
-    // 1. FILTER DOWNLOADED: Removes already downloaded URLs from the text area
+    // 1. FILTER DOWNLOADED: Removes already downloaded URLs AND duplicate entries from the text area
     function filterDownloaded() {
       const urls = parseInputUrls();
       if (urls.length === 0) {
@@ -1592,19 +1622,89 @@
       }
 
       const existingSet = new Set(downloadRecords.map(r => r.url.toLowerCase()));
-      const remainingUrls = urls.filter(u => !existingSet.has(u.toLowerCase()));
-      const removedCount = urls.length - remainingUrls.length;
+      const seenInBox = new Set();
+      const uniqueRemainingUrls = [];
+      let internalDupCount = 0;
+      let downloadedCount = 0;
 
-      document.getElementById('url-input').value = remainingUrls.join('\n');
+      urls.forEach(u => {
+        const lower = u.toLowerCase();
+        if (existingSet.has(lower)) {
+          downloadedCount++;
+        } else if (seenInBox.has(lower)) {
+          internalDupCount++;
+        } else {
+          seenInBox.add(lower);
+          uniqueRemainingUrls.push(u);
+        }
+      });
+
+      document.getElementById('url-input').value = uniqueRemainingUrls.join('\n');
       updateInputLiveStatus();
 
-      if (removedCount === 0) {
-        showBanner(`No already-downloaded URLs were found. All ${urls.length} URLs are new!`, 'info');
-        showToast('All URLs are new!', 'info');
+      const totalRemoved = downloadedCount + internalDupCount;
+      if (totalRemoved === 0) {
+        showBanner(`All ${urls.length} URLs are unique and new!`, 'info');
+        showToast('All URLs are unique & new!', 'info');
       } else {
-        showBanner(`Filtered out ${removedCount} downloaded ${removedCount === 1 ? 'URL' : 'URLs'}. ${remainingUrls.length} new ${remainingUrls.length === 1 ? 'URL' : 'URLs'} remaining.`, 'success');
-        showToast(`Filtered out ${removedCount} downloaded URLs`, 'success');
+        const details = [];
+        if (downloadedCount > 0) details.push(`${downloadedCount} downloaded`);
+        if (internalDupCount > 0) details.push(`${internalDupCount} duplicate${internalDupCount === 1 ? '' : 's'}`);
+        showBanner(`Filtered out ${details.join(' and ')}. ${uniqueRemainingUrls.length} unique new URL${uniqueRemainingUrls.length === 1 ? '' : 's'} remaining.`, 'success');
+        showToast(`Removed ${totalRemoved} URL${totalRemoved === 1 ? '' : 's'} (${details.join(', ')})`, 'success');
       }
+    }
+
+    // Deduplicate textbox lines
+    function deduplicateBox() {
+      const urls = parseInputUrls();
+      if (urls.length === 0) {
+        showToast('Text box is empty', 'info');
+        return;
+      }
+      const seen = new Set();
+      const unique = [];
+      urls.forEach(u => {
+        const lower = u.toLowerCase();
+        if (!seen.has(lower)) {
+          seen.add(lower);
+          unique.push(u);
+        }
+      });
+      const dups = urls.length - unique.length;
+      document.getElementById('url-input').value = unique.join('\n');
+      updateInputLiveStatus();
+      if (dups > 0) {
+        showToast(`Removed ${dups} duplicate URL${dups === 1 ? '' : 's'}`, 'success');
+        showBanner(`Removed ${dups} duplicate URL${dups === 1 ? '' : 's'}. ${unique.length} unique URLs remaining.`, 'success');
+      } else {
+        showToast('No duplicates found in text box', 'info');
+      }
+    }
+
+    // Copy URLs as JSON array of strings
+    function copyAsJson() {
+      const urls = parseInputUrls();
+      if (urls.length === 0) {
+        showToast('No URLs in text box to copy as JSON', 'info');
+        return;
+      }
+      const seen = new Set();
+      const unique = [];
+      urls.forEach(u => {
+        const lower = u.toLowerCase();
+        if (!seen.has(lower)) {
+          seen.add(lower);
+          unique.push(u);
+        }
+      });
+
+      const jsonStr = JSON.stringify(unique, null, 2);
+      navigator.clipboard.writeText(jsonStr).then(() => {
+        showToast(`Copied ${unique.length} URL${unique.length === 1 ? '' : 's'} as JSON array`, 'success');
+      }).catch(() => {
+        showToast('Failed to copy to clipboard', 'error');
+      });
     }
 
     // 2. MARK AS DOWNLOADED: Saves URLs into localStorage with current timestamp
@@ -2067,6 +2167,8 @@
       document.getElementById('btn-filter-downloaded').addEventListener('click', filterDownloaded);
       document.getElementById('btn-mark-downloaded').addEventListener('click', markAsDownloaded);
       document.getElementById('btn-remove-history').addEventListener('click', removeFromHistory);
+      document.getElementById('btn-copy-json').addEventListener('click', copyAsJson);
+      document.getElementById('btn-dedup-box').addEventListener('click', deduplicateBox);
       document.getElementById('btn-clear-box').addEventListener('click', clearBox);
       document.getElementById('btn-paste-clip').addEventListener('click', pasteFromClipboard);
       document.getElementById('btn-extract-urls').addEventListener('click', extractUrlsFromText);
