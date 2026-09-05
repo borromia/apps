@@ -84,17 +84,90 @@ class RateLimiter {
   }
 }
 
-// Global request cache across component remounts, navigations, and instances (excluding binary downloads)
+const MAX_BLOB_CACHE_BYTES = 100 * 1024 * 1024; // 100 MB
+
+class LruBlobCache {
+  private cache = new Map<string, { blob: Blob; size: number; lastAccessed: number }>();
+  private currentTotalSize = 0;
+  private readonly maxBytes: number;
+
+  constructor(maxBytes = MAX_BLOB_CACHE_BYTES) {
+    this.maxBytes = maxBytes;
+  }
+
+  get(key: string): Blob | undefined {
+    const entry = this.cache.get(key);
+    if (!entry) return undefined;
+    entry.lastAccessed = Date.now();
+    // Refresh insertion order for LRU
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+    return entry.blob;
+  }
+
+  set(key: string, blob: Blob): void {
+    const size = blob.size;
+    if (size > this.maxBytes) {
+      return;
+    }
+
+    if (this.cache.has(key)) {
+      this.currentTotalSize -= this.cache.get(key)!.size;
+      this.cache.delete(key);
+    }
+
+    // Evict oldest entries until within maxBytes
+    while (this.currentTotalSize + size > this.maxBytes && this.cache.size > 0) {
+      const oldestKey = this.cache.keys().next().value;
+      if (!oldestKey) break;
+      const oldestEntry = this.cache.get(oldestKey);
+      if (oldestEntry) {
+        this.currentTotalSize -= oldestEntry.size;
+      }
+      this.cache.delete(oldestKey);
+    }
+
+    this.cache.set(key, { blob, size, lastAccessed: Date.now() });
+    this.currentTotalSize += size;
+  }
+
+  has(key: string): boolean {
+    return this.cache.has(key);
+  }
+
+  delete(key: string): boolean {
+    const entry = this.cache.get(key);
+    if (!entry) return false;
+    this.currentTotalSize -= entry.size;
+    return this.cache.delete(key);
+  }
+
+  clear(): void {
+    this.cache.clear();
+    this.currentTotalSize = 0;
+  }
+
+  getTotalSizeBytes(): number {
+    return this.currentTotalSize;
+  }
+}
+
+// Global request & download caches across component remounts, navigations, and instances
 const globalZeroStorageApiCache = new Map<string, any>();
 const globalZeroStorageInFlight = new Map<string, Promise<any>>();
+const globalZeroStorageBlobCache = new LruBlobCache(MAX_BLOB_CACHE_BYTES);
+const globalZeroStorageDownloadInFlight = new Map<string, Promise<Blob>>();
 
 if (typeof window !== 'undefined') {
   (window as any).__ZEROSTORAGE_API_CACHE__ = globalZeroStorageApiCache;
+  (window as any).__ZEROSTORAGE_BLOB_CACHE__ = globalZeroStorageBlobCache;
 }
 
 export function clearZeroStorageApiCache(): void {
   globalZeroStorageApiCache.clear();
   globalZeroStorageInFlight.clear();
+  globalZeroStorageBlobCache.clear();
+  globalZeroStorageDownloadInFlight.clear();
 }
 
 export class ZeroStorageSource implements StorageSource {
@@ -542,7 +615,7 @@ export class ZeroStorageSource implements StorageSource {
   }
 
   /**
-   * Download file content from ZeroStorage download endpoint.
+   * Download file content from ZeroStorage download endpoint (cached in 100MB LRU blob cache).
    */
   async getFileBlob(path: string, fileName: string): Promise<Blob> {
     const normalizedPath = path.replace(/^\/+|\/+$/g, '');
@@ -559,6 +632,17 @@ export class ZeroStorageSource implements StorageSource {
       throw new Error(`File not found: ${fullPath}`);
     }
 
+    const cacheKey = `${this.config?.apiKey || ''}:${fileId}`;
+
+    const cachedBlob = globalZeroStorageBlobCache.get(cacheKey);
+    if (cachedBlob) {
+      return cachedBlob;
+    }
+
+    if (globalZeroStorageDownloadInFlight.has(cacheKey)) {
+      return globalZeroStorageDownloadInFlight.get(cacheKey)!;
+    }
+
     const url = `${this.apiBaseUrl}/files/download/${fileId}`;
     const headers: HeadersInit = {
       Accept: '*/*',
@@ -567,11 +651,22 @@ export class ZeroStorageSource implements StorageSource {
       headers['x-api-key'] = this.config.apiKey;
     }
 
-    const resp = await this.fetchWithRateLimit(url, { headers });
-    if (!resp.ok) {
-      throw new Error(`Failed to download file from ZeroStorage (${resp.status}): ${resp.statusText}`);
-    }
-    return await resp.blob();
+    const downloadPromise = (async () => {
+      try {
+        const resp = await this.fetchWithRateLimit(url, { headers });
+        if (!resp.ok) {
+          throw new Error(`Failed to download file from ZeroStorage (${resp.status}): ${resp.statusText}`);
+        }
+        const blob = await resp.blob();
+        globalZeroStorageBlobCache.set(cacheKey, blob);
+        return blob;
+      } finally {
+        globalZeroStorageDownloadInFlight.delete(cacheKey);
+      }
+    })();
+
+    globalZeroStorageDownloadInFlight.set(cacheKey, downloadPromise);
+    return downloadPromise;
   }
 
   async moveToTrash(path: string, fileName?: string): Promise<boolean> {
@@ -591,6 +686,7 @@ export class ZeroStorageSource implements StorageSource {
         await this.request(`/files/${fileId}`, {
           method: 'DELETE',
         });
+        globalZeroStorageBlobCache.delete(`${this.config?.apiKey || ''}:${fileId}`);
         this.invalidateCache();
         return true;
       } else {
