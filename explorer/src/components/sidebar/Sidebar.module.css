@@ -1,15 +1,27 @@
 .sidebar {
-  height: 100%;
+  height: calc(100% - var(--topbar-h) - var(--card-gap));
+  margin-top: calc(var(--topbar-h) + var(--card-gap));
   background: var(--surface);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border-right: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
   user-select: none;
-  padding-top: var(--topbar-h);
+  z-index: 10;
+}
+
+@media (max-width: 767px) {
+  .sidebar {
+    margin-top: 0;
+    height: 100%;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+  }
 }
 
 .header {

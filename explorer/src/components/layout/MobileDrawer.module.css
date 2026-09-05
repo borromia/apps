@@ -16,6 +16,15 @@
   border-right: 1px solid var(--border-strong);
   display: flex;
   flex-direction: column;
-  box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
   animation: slideInLeft 0.2s ease-out;
+}
+
+.mobileSidebar {
+  width: 100% !important;
+  height: 100% !important;
+  margin-top: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
 }

@@ -15,8 +15,8 @@ export const TileGridView: React.FC<TileGridViewProps> = ({ items }) => {
       style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(calc(var(--zoom) * 160px), 1fr))',
-        gap: '16px',
-        padding: '16px 20px 40px',
+        gap: '14px',
+        padding: '2px 0 24px',
         width: '100%',
       }}
     >

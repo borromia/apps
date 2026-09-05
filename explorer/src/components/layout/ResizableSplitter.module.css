@@ -1,7 +1,7 @@
 .splitter {
-  width: 6px;
-  margin-left: -3px;
-  margin-right: -3px;
+  width: var(--card-gap);
+  margin-top: calc(var(--topbar-h) + var(--card-gap));
+  height: calc(100% - var(--topbar-h) - var(--card-gap));
   cursor: col-resize;
   background: transparent;
   position: relative;
@@ -12,5 +12,5 @@
 
 .splitter:hover,
 .splitterActive {
-  background: var(--accent);
+  background: rgba(0, 122, 204, 0.4);
 }

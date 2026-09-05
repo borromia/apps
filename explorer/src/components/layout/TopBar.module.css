@@ -1,13 +1,14 @@
 .topbar {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: var(--card-gap);
+  left: var(--card-gap);
+  right: var(--card-gap);
   height: var(--topbar-h);
   background: var(--surface);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border-bottom: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -90,6 +91,13 @@
 }
 
 @media (max-width: 767px) {
+  .topbar {
+    top: 6px;
+    left: 6px;
+    right: 6px;
+    padding: 0 12px;
+  }
+
   .desktopOnly {
     display: none;
   }

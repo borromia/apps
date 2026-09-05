@@ -21,6 +21,8 @@ import { useResizable } from '../../hooks/useResizable';
 import { useKeyboardNav } from '../../hooks/useKeyboardNav';
 import { Loader2 } from 'lucide-react';
 
+import { MinimalArtBg } from '../common/MinimalArtBg';
+
 import styles from './Layout.module.css';
 
 export const Layout: React.FC = () => {
@@ -70,6 +72,12 @@ export const Layout: React.FC = () => {
 
   return (
     <div className={styles.appContainer}>
+      {/* Ambient background abstract vector artwork */}
+      <div className={styles.ambientBg}>
+        <MinimalArtBg />
+        <div className={styles.ambientOverlay} />
+      </div>
+
       <TopBar />
 
       <div className={styles.bodyContainer}>
@@ -90,14 +98,16 @@ export const Layout: React.FC = () => {
           )}
 
           {!isConnected ? (
-            <div style={{ paddingTop: 'var(--topbar-h)', height: '100%' }}>
+            <div style={{ height: '100%' }}>
               <EmptyState type="no-source" />
             </div>
           ) : !currentListing ? (
             <div
               style={{
-                paddingTop: 'calc(var(--topbar-h) + 40px)',
-                textAlign: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100%',
                 color: 'var(--text-dim)',
               }}
             >

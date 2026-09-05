@@ -1,0 +1,210 @@
+import React from 'react';
+
+export const MinimalArtBg: React.FC = () => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 1024 683"
+      preserveAspectRatio="xMidYMid slice"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+      }}
+    >
+      <defs>
+        {/* Sky / Atmospheric Background Gradient */}
+        <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#121118" />
+          <stop offset="40%" stopColor="#181822" />
+          <stop offset="70%" stopColor="#1c1f1a" />
+          <stop offset="100%" stopColor="#22201b" />
+        </linearGradient>
+
+        {/* Sunlight Radial Glow */}
+        <radialGradient id="sunGlow" cx="78%" cy="22%" r="65%">
+          <stop offset="0%" stopColor="#fef08a" stopOpacity="0.3" />
+          <stop offset="35%" stopColor="#eab308" stopOpacity="0.15" />
+          <stop offset="70%" stopColor="#ca8a04" stopOpacity="0.04" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+        </radialGradient>
+
+        {/* Sunbeam Light Rays */}
+        <linearGradient id="sunRay" x1="100%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#fef08a" stopOpacity="0.25" />
+          <stop offset="40%" stopColor="#fde047" stopOpacity="0.09" />
+          <stop offset="100%" stopColor="#eab308" stopOpacity="0" />
+        </linearGradient>
+
+        {/* Dark fabric gradient matching the rich black/indigo tone */}
+        <linearGradient id="bodyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#181824" />
+          <stop offset="35%" stopColor="#0f0f18" />
+          <stop offset="70%" stopColor="#1a1a28" />
+          <stop offset="100%" stopColor="#09090e" />
+        </linearGradient>
+
+        {/* Outer edge highlight along the primary curve (golden sunlight rim reflection) */}
+        <linearGradient id="primaryEdgeHighlight" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#404558" stopOpacity="0" />
+          <stop offset="50%" stopColor="#786040" stopOpacity="0.3" />
+          <stop offset="85%" stopColor="#d4a373" stopOpacity="0.8" />
+          <stop offset="100%" stopColor="#fef08a" stopOpacity="1" />
+        </linearGradient>
+
+        {/* Highlight line defining the secondary parallel curve */}
+        <linearGradient id="secondaryEdgeHighlight" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#303445" stopOpacity="0" />
+          <stop offset="60%" stopColor="#555c72" stopOpacity="0.3" />
+          <stop offset="90%" stopColor="#ca8a04" stopOpacity="0.6" />
+          <stop offset="100%" stopColor="#fde047" stopOpacity="0.85" />
+        </linearGradient>
+
+        {/* Subtle inner fold depth shadow */}
+        <radialGradient id="foldDepthShadow" cx="20%" cy="40%" r="60%">
+          <stop offset="0%" stopColor="#000000" stopOpacity="0.5" />
+          <stop offset="60%" stopColor="#000000" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+
+      {/* 1. Background Fill */}
+      <rect width="1024" height="683" fill="url(#bgGrad)" />
+
+      {/* 2. Sun Glow Aura in background */}
+      <rect width="1024" height="683" fill="url(#sunGlow)" />
+
+      {/* 3. Balcony Terrace Railing (Matching photo / perspective) */}
+      <rect x="380" y="470" width="644" height="12" fill="#542e18" opacity="0.3" rx="1" />
+      <line x1="380" y1="470" x2="1024" y2="470" stroke="#ca8a04" strokeWidth="0.8" opacity="0.25" />
+      {[...Array(6)].map((_, i) => (
+        <line
+          key={i}
+          x1={480 + i * 105}
+          y1={482}
+          x2={480 + i * 105}
+          y2={683}
+          stroke="#542e18"
+          strokeWidth="1"
+          opacity="0.18"
+        />
+      ))}
+
+      {/* 4. Soft Sunbeams streaming from the upper-right foliage */}
+      <polygon points="940,0 1024,0 720,683 610,683" fill="url(#sunRay)" opacity="0.8" />
+      <polygon points="790,0 870,0 560,683 480,683" fill="url(#sunRay)" opacity="0.45" />
+
+      {/* 5. User's Exact Silhouette Body Fill */}
+      <path
+        fill="url(#bodyGradient)"
+        d="
+          M 0,0 
+          L 200,0 
+          C 230,40 260,75 300,110 
+          C 350,150 420,205 465,270 
+          C 510,335 515,420 495,490 
+          C 475,560 440,610 420,683 
+          L 0,683 
+          Z
+        "
+      />
+
+      {/* Fabric Depth Overlay */}
+      <path
+        fill="url(#foldDepthShadow)"
+        d="
+          M 0,180 
+          C 40,200 80,240 120,250 
+          C 70,300 30,350 0,380 
+          Z
+        "
+      />
+
+      {/* Left Side Front Profile Line / Waist Transition */}
+      <path
+        d="M 45,0 C 110,120 150,220 150,310 C 150,420 100,560 85,683"
+        fill="none"
+        stroke="#333748"
+        strokeWidth="1.8"
+        strokeOpacity="0.6"
+        strokeLinecap="round"
+      />
+
+      {/* Inner Crease / Fabric Folds on Left */}
+      <path
+        d="M 0,225 C 45,235 90,260 135,255"
+        fill="none"
+        stroke="#252836"
+        strokeWidth="1.5"
+        strokeOpacity="0.4"
+        strokeLinecap="round"
+      />
+      <path
+        d="M 0,310 C 35,300 75,290 110,270"
+        fill="none"
+        stroke="#252836"
+        strokeWidth="1.5"
+        strokeOpacity="0.4"
+        strokeLinecap="round"
+      />
+      <path
+        d="M 0,160 C 25,180 55,210 75,220"
+        fill="none"
+        stroke="#252836"
+        strokeWidth="1.5"
+        strokeOpacity="0.4"
+        strokeLinecap="round"
+      />
+
+      {/* Inner Accent Curve (lower Gluteal Crease Detail) */}
+      <path
+        d="M 305,565 C 380,565 440,520 470,430"
+        fill="none"
+        stroke="#333748"
+        strokeWidth="1.8"
+        strokeOpacity="0.6"
+        strokeLinecap="round"
+      />
+
+      {/* Secondary Inner Curve (Inner Contour Line) */}
+      <path
+        d="
+          M 180,0 
+          C 210,38 240,70 280,105 
+          C 330,145 398,198 440,262 
+          C 482,326 486,405 468,472 
+          C 450,538 418,588 370,683
+        "
+        fill="none"
+        stroke="url(#secondaryEdgeHighlight)"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+
+      {/* Primary Outer Curve (Main Profile Edge Line) */}
+      <path
+        d="
+          M 200,0 
+          C 230,40 260,75 300,110 
+          C 350,150 420,205 465,270 
+          C 510,335 515,420 495,490 
+          C 475,560 440,610 420,683
+        "
+        fill="none"
+        stroke="url(#primaryEdgeHighlight)"
+        strokeWidth="3.5"
+        strokeLinecap="round"
+      />
+
+      {/* Ambient subtle sunlight particles */}
+      <circle cx="510" cy="410" r="2" fill="#fef08a" opacity="0.65" />
+      <circle cx="485" cy="510" r="1.5" fill="#fde047" opacity="0.55" />
+      <circle cx="380" cy="270" r="1.8" fill="#fef08a" opacity="0.6" />
+      <circle cx="720" cy="230" r="2" fill="#fde047" opacity="0.4" />
+      <circle cx="860" cy="150" r="2.2" fill="#fef08a" opacity="0.5" />
+    </svg>
+  );
+};
+

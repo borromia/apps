@@ -20,9 +20,8 @@ export const MobileDrawer: React.FC = () => {
         className={styles.drawer}
         onClick={(e) => e.stopPropagation()}
       >
-        <Sidebar style={{ width: '100%', borderRight: 'none' }} />
+        <Sidebar className={styles.mobileSidebar} />
       </div>
     </div>
   );
 };
-

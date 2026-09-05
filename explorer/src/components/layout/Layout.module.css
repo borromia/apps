@@ -1,29 +1,47 @@
 .appContainer {
-  display: flex;
-  flex-direction: column;
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-  background: var(--bg);
+  background-color: var(--bg);
   position: relative;
+  box-sizing: border-box;
+}
+
+/* Ambient abstract vector artwork background */
+.ambientBg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+  filter: brightness(0.95) contrast(1.02);
+}
+
+.ambientOverlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 60% 40%, rgba(18, 17, 15, 0.2) 0%, rgba(14, 13, 12, 0.75) 100%);
 }
 
 .bodyContainer {
   display: flex;
-  flex: 1;
+  height: 100vh;
   overflow: hidden;
   position: relative;
-  height: 100%;
+  padding: var(--card-gap);
+  box-sizing: border-box;
+  z-index: 1;
 }
 
 .mainContent {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  background: var(--bg);
-  position: relative;
   height: 100%;
+  overflow: hidden;
+  background: transparent;
+  position: relative;
+  z-index: 1;
 }
 
 .viewContainer {
@@ -33,25 +51,30 @@
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
-  padding-top: var(--topbar-h);
+  padding: calc(var(--topbar-h) + var(--card-gap)) 0 var(--card-gap);
+  z-index: 1;
 }
 
 .loadingOverlay {
   position: absolute;
   inset: 0;
   background: rgba(18, 18, 22, 0.7);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 50;
   color: var(--accent);
+  border-radius: var(--radius-lg);
 }
 
 @media (max-width: 767px) {
+  .bodyContainer {
+    padding: 6px;
+  }
+
   .viewContainer {
-    padding-top: var(--topbar-h);
-    padding-bottom: var(--bottombar-h);
+    padding: calc(var(--topbar-h) + 6px) 0 calc(var(--bottombar-h) + 12px);
   }
 }
