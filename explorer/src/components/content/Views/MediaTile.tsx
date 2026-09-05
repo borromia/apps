@@ -43,7 +43,15 @@ export const MediaTile: React.FC<MediaTileProps> = ({ item, index, onClick }) =>
     return () => observer.disconnect();
   }, []);
 
-  const { url, loading } = useMediaUrl(activeSource, item.path, item.name, isInView);
+  const MAX_VIDEO_AUTO_LOAD_SIZE = 20 * 1024 * 1024; // 20 MB
+  const isLargeVideo = item.type === 'video' && item.size > MAX_VIDEO_AUTO_LOAD_SIZE;
+
+  const { url, loading } = useMediaUrl(
+    activeSource,
+    item.path,
+    item.name,
+    isInView && !isLargeVideo
+  );
 
   // Apply playback speed to video element
   useEffect(() => {
@@ -97,7 +105,15 @@ export const MediaTile: React.FC<MediaTileProps> = ({ item, index, onClick }) =>
           />
         )}
 
-        {url && item.type === 'video' && (
+        {isLargeVideo && (
+          <div className={styles.videoPlaceholder}>
+            <Film size={36} className={styles.largeVideoIcon} />
+            <span className={styles.videoName}>{item.name}</span>
+            <span className={styles.videoSizeBadge}>{formatFileSize(item.size)}</span>
+          </div>
+        )}
+
+        {url && !isLargeVideo && item.type === 'video' && (
           <video
             ref={videoRef}
             src={url}

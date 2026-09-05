@@ -11,6 +11,7 @@ import { MobileBottomNav } from './MobileBottomNav';
 import { LightboxModal } from '../lightbox/LightboxModal';
 import { SourceSelectorModal } from '../sources/SourceSelectorModal';
 import { S3ConfigModal } from '../sources/S3ConfigModal';
+import { ZeroStorageConfigModal } from '../sources/ZeroStorageConfigModal';
 
 import { useExplorer } from '../../context/ExplorerContext';
 import { useSource } from '../../context/SourceContext';
@@ -141,6 +142,7 @@ export const Layout: React.FC = () => {
       <LightboxModal />
       <SourceSelectorModal />
       <S3ConfigModal />
+      <ZeroStorageConfigModal />
     </div>
   );
 };

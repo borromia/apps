@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { useSource } from '../../context/SourceContext';
-import { Folder, FolderOpen, Cloud, ChevronRight, LogOut, RefreshCw } from 'lucide-react';
+import { Folder, FolderOpen, Cloud, Database, ChevronRight, LogOut } from 'lucide-react';
 import styles from './SourceSelectorModal.module.css';
 
 export const SourceSelectorModal: React.FC = () => {
@@ -11,9 +11,9 @@ export const SourceSelectorModal: React.FC = () => {
     closeSourceSelector,
     sources,
     activeSource,
-    selectSource,
     pickNewFileSystemFolder,
     openS3Config,
+    openZeroStorageConfig,
     disconnectSource,
   } = useSource();
 
@@ -21,6 +21,9 @@ export const SourceSelectorModal: React.FC = () => {
     if (sourceId === 's3-cloud') {
       closeSourceSelector();
       openS3Config();
+    } else if (sourceId === 'zerostorage') {
+      closeSourceSelector();
+      openZeroStorageConfig();
     } else {
       // Force directory picker so user can pick any folder
       await pickNewFileSystemFolder();
@@ -37,6 +40,7 @@ export const SourceSelectorModal: React.FC = () => {
         {sources.map((src) => {
           const isActive = activeSource?.id === src.id;
           const isFs = src.type === 'filesystem';
+          const isZero = src.type === 'zerostorage';
 
           return (
             <div key={src.id} className={`${styles.item} ${isActive ? styles.itemActive : ''}`}>
@@ -46,7 +50,7 @@ export const SourceSelectorModal: React.FC = () => {
               >
                 <div className={styles.itemInfo}>
                   <div className={styles.iconWrap}>
-                    {isFs ? <Folder size={20} /> : <Cloud size={20} />}
+                    {isFs ? <Folder size={20} /> : isZero ? <Database size={20} /> : <Cloud size={20} />}
                   </div>
                   <div>
                     <div className={styles.name}>{src.name}</div>
@@ -55,7 +59,9 @@ export const SourceSelectorModal: React.FC = () => {
                         ? isActive
                           ? `Active: ${activeSource.getRootName()}`
                           : 'Local drive folder via File System Access API'
-                        : 'AWS S3, MinIO, Cloudflare R2 object storage'}
+                        : isZero
+                          ? 'ZeroStorage (zerostorage.net) cloud storage & CDN'
+                          : 'AWS S3, MinIO, Cloudflare R2 object storage'}
                     </div>
                   </div>
                 </div>
@@ -77,7 +83,7 @@ export const SourceSelectorModal: React.FC = () => {
                     icon={<FolderOpen size={14} />}
                     onClick={() => handleSelect(src.id)}
                   >
-                    {isFs ? 'Choose Different Folder' : 'Configure S3'}
+                    {isFs ? 'Choose Different Folder' : isZero ? 'Configure ZeroStorage' : 'Configure S3'}
                   </Button>
                   <Button
                     size="sm"

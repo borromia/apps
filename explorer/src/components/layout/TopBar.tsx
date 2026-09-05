@@ -4,13 +4,13 @@ import { Slider } from '../common/Slider';
 import { useSource } from '../../context/SourceContext';
 import { useReader } from '../../context/ReaderContext';
 import { useResponsive } from '../../hooks/useMediaQuery';
+import { StylishFolderLogo } from '../common/StylishFolderLogo';
 import {
   FolderOpen,
   LayoutGrid,
   Scroll,
   Maximize2,
   Menu,
-  Sparkles,
   Zap,
 } from 'lucide-react';
 import styles from './TopBar.module.css';
@@ -50,7 +50,7 @@ export const TopBar: React.FC = () => {
         )}
 
         <div className={styles.brand}>
-          <Sparkles size={18} color="var(--accent)" />
+          <StylishFolderLogo size={22} />
           <span>Explorer</span>
         </div>
 

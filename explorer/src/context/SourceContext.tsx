@@ -1,7 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { StorageSource, S3Credentials } from '../types/source';
-import { sourceRegistry, FileSystemSource, S3StorageSource } from '../sources';
-import { getSavedFileSystemHandle, getSavedS3Config } from '../services/storageDb';
+import { StorageSource, S3Credentials, ZeroStorageCredentials } from '../types/source';
+import { sourceRegistry, FileSystemSource, S3StorageSource, ZeroStorageSource } from '../sources';
+import {
+  getSavedFileSystemHandle,
+  getSavedS3Config,
+  getSavedZeroStorageConfig,
+  getActiveSourceId,
+  saveActiveSourceId,
+  clearActiveSourceId,
+} from '../services/storageDb';
 
 interface SourceContextValue {
   activeSource: StorageSource | null;
@@ -11,13 +18,17 @@ interface SourceContextValue {
   rootName: string;
   isSourceSelectorOpen: boolean;
   isS3ConfigOpen: boolean;
+  isZeroStorageConfigOpen: boolean;
   openSourceSelector: () => void;
   closeSourceSelector: () => void;
   openS3Config: () => void;
   closeS3Config: () => void;
+  openZeroStorageConfig: () => void;
+  closeZeroStorageConfig: () => void;
   selectSource: (sourceId: string, forceNew?: boolean) => Promise<boolean>;
   pickNewFileSystemFolder: () => Promise<boolean>;
   configureS3: (creds: S3Credentials) => Promise<boolean>;
+  configureZeroStorage: (creds: ZeroStorageCredentials) => Promise<boolean>;
   disconnectSource: () => Promise<void>;
 }
 
@@ -30,35 +41,70 @@ export const SourceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isConnecting, setIsConnecting] = useState<boolean>(true);
   const [isSourceSelectorOpen, setIsSourceSelectorOpen] = useState<boolean>(false);
   const [isS3ConfigOpen, setIsS3ConfigOpen] = useState<boolean>(false);
+  const [isZeroStorageConfigOpen, setIsZeroStorageConfigOpen] = useState<boolean>(false);
 
   // Auto-restore previously saved source on mount
   useEffect(() => {
     let isMounted = true;
     (async () => {
       try {
-        const savedFs = await getSavedFileSystemHandle();
-        if (savedFs) {
-          const fsSource = new FileSystemSource(savedFs);
-          sourceRegistry.register(fsSource);
-          if (isMounted) {
-            setActiveSource(fsSource);
-            setIsConnected(true);
-            setIsConnecting(false);
-            return;
+        const activeSourceId = await getActiveSourceId();
+
+        const restoreZeroStorage = async (): Promise<boolean> => {
+          const savedZero = await getSavedZeroStorageConfig();
+          if (savedZero) {
+            const zeroSource = new ZeroStorageSource(savedZero);
+            sourceRegistry.register(zeroSource);
+            const ok = await zeroSource.connect();
+            if (ok && isMounted) {
+              setActiveSource(zeroSource);
+              setIsConnected(true);
+              return true;
+            }
           }
+          return false;
+        };
+
+        const restoreS3 = async (): Promise<boolean> => {
+          const savedS3 = await getSavedS3Config();
+          if (savedS3) {
+            const s3Source = new S3StorageSource(savedS3);
+            sourceRegistry.register(s3Source);
+            if (isMounted) {
+              setActiveSource(s3Source);
+              setIsConnected(true);
+              return true;
+            }
+          }
+          return false;
+        };
+
+        const restoreFs = async (): Promise<boolean> => {
+          const savedFs = await getSavedFileSystemHandle();
+          if (savedFs) {
+            const fsSource = new FileSystemSource(savedFs);
+            sourceRegistry.register(fsSource);
+            if (isMounted) {
+              setActiveSource(fsSource);
+              setIsConnected(true);
+              return true;
+            }
+          }
+          return false;
+        };
+
+        if (activeSourceId === 'zerostorage') {
+          if (await restoreZeroStorage()) return;
+        } else if (activeSourceId === 's3-cloud') {
+          if (await restoreS3()) return;
+        } else if (activeSourceId === 'local-fs') {
+          if (await restoreFs()) return;
         }
 
-        const savedS3 = await getSavedS3Config();
-        if (savedS3) {
-          const s3Source = new S3StorageSource(savedS3);
-          sourceRegistry.register(s3Source);
-          if (isMounted) {
-            setActiveSource(s3Source);
-            setIsConnected(true);
-            setIsConnecting(false);
-            return;
-          }
-        }
+        // Fallback if no activeSourceId or preferred failed
+        if (await restoreZeroStorage()) return;
+        if (await restoreS3()) return;
+        if (await restoreFs()) return;
       } catch (err) {
         console.warn('Auto restore source failed:', err);
       } finally {
@@ -80,10 +126,15 @@ export const SourceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return false;
     }
 
+    if (src.type === 'zerostorage' && (!src.isConnected() || forceNew)) {
+      setIsZeroStorageConfigOpen(true);
+      return false;
+    }
+
     try {
       const ok = await src.connect(forceNew);
       if (ok) {
-        // Use fresh object wrapper so state update triggers properly
+        await saveActiveSourceId(sourceId);
         setActiveSource(Object.assign(Object.create(Object.getPrototypeOf(src)), src));
         setIsConnected(true);
         setIsSourceSelectorOpen(false);
@@ -103,6 +154,7 @@ export const SourceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     const ok = await fsSource.connect(true);
     if (ok) {
+      await saveActiveSourceId('local-fs');
       setActiveSource(Object.assign(Object.create(Object.getPrototypeOf(fsSource)), fsSource));
       setIsConnected(true);
       setIsSourceSelectorOpen(false);
@@ -117,9 +169,26 @@ export const SourceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     sourceRegistry.register(s3);
     const ok = await s3.connect();
     if (ok) {
+      await saveActiveSourceId('s3-cloud');
       setActiveSource(s3);
       setIsConnected(true);
       setIsS3ConfigOpen(false);
+      setIsSourceSelectorOpen(false);
+      return true;
+    }
+    return false;
+  }, []);
+
+  const configureZeroStorage = useCallback(async (creds: ZeroStorageCredentials): Promise<boolean> => {
+    const zero = new ZeroStorageSource(creds);
+    await zero.setCredentials(creds);
+    sourceRegistry.register(zero);
+    const ok = await zero.connect();
+    if (ok) {
+      await saveActiveSourceId('zerostorage');
+      setActiveSource(zero);
+      setIsConnected(true);
+      setIsZeroStorageConfigOpen(false);
       setIsSourceSelectorOpen(false);
       return true;
     }
@@ -130,6 +199,7 @@ export const SourceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (activeSource?.disconnect) {
       await activeSource.disconnect();
     }
+    await clearActiveSourceId();
     setActiveSource(null);
     setIsConnected(false);
     setIsSourceSelectorOpen(false);
@@ -143,13 +213,17 @@ export const SourceProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     rootName: activeSource ? activeSource.getRootName() : '',
     isSourceSelectorOpen,
     isS3ConfigOpen,
+    isZeroStorageConfigOpen,
     openSourceSelector: () => setIsSourceSelectorOpen(true),
     closeSourceSelector: () => setIsSourceSelectorOpen(false),
     openS3Config: () => setIsS3ConfigOpen(true),
     closeS3Config: () => setIsS3ConfigOpen(false),
+    openZeroStorageConfig: () => setIsZeroStorageConfigOpen(true),
+    closeZeroStorageConfig: () => setIsZeroStorageConfigOpen(false),
     selectSource,
     pickNewFileSystemFolder,
     configureS3,
+    configureZeroStorage,
     disconnectSource,
   };
 

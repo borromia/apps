@@ -3,7 +3,8 @@ import { MediaItem } from '../../../types/media';
 import { useSource } from '../../../context/SourceContext';
 import { useReader } from '../../../context/ReaderContext';
 import { useMediaUrl } from '../../../hooks/useMediaUrl';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Film } from 'lucide-react';
+import { formatFileSize } from '../../../services/mediaDetector';
 import styles from './StripMediaItem.module.css';
 
 interface StripMediaItemProps {
@@ -38,7 +39,15 @@ export const StripMediaItem: React.FC<StripMediaItemProps> = ({ item, index, tot
     return () => observer.disconnect();
   }, []);
 
-  const { url, loading } = useMediaUrl(activeSource, item.path, item.name, isInView);
+  const MAX_VIDEO_AUTO_LOAD_SIZE = 20 * 1024 * 1024; // 20 MB
+  const isLargeVideo = item.type === 'video' && item.size > MAX_VIDEO_AUTO_LOAD_SIZE;
+
+  const { url, loading } = useMediaUrl(
+    activeSource,
+    item.path,
+    item.name,
+    isInView && !isLargeVideo
+  );
 
   useEffect(() => {
     if (videoRef.current) {
@@ -61,11 +70,54 @@ export const StripMediaItem: React.FC<StripMediaItemProps> = ({ item, index, tot
           </div>
         )}
 
+        {isLargeVideo && (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              padding: '48px 24px',
+              background: 'var(--surface-card)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border)',
+              maxWidth: '400px',
+              margin: '0 auto',
+              color: 'var(--text-muted)',
+            }}
+          >
+            <Film size={48} style={{ color: '#38bdf8' }} />
+            <span
+              style={{
+                fontWeight: 600,
+                color: 'var(--text-main)',
+                fontSize: '13px',
+                textAlign: 'center',
+                wordBreak: 'break-all',
+              }}
+            >
+              {item.name}
+            </span>
+            <span
+              style={{
+                fontSize: '11px',
+                background: 'var(--surface-overlay)',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                border: '1px solid var(--border)',
+              }}
+            >
+              {formatFileSize(item.size)} (Video &gt; 20MB)
+            </span>
+          </div>
+        )}
+
         {url && item.type === 'image' && (
           <img src={url} alt={item.name} className={styles.image} loading="lazy" />
         )}
 
-        {url && item.type === 'video' && (
+        {url && !isLargeVideo && item.type === 'video' && (
           <video
             ref={videoRef}
             src={url}

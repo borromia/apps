@@ -11,8 +11,12 @@ import {
   X,
   Trash2,
   Loader2,
+  Film,
+  Play,
 } from 'lucide-react';
 import styles from './Lightbox.module.css';
+
+const MAX_VIDEO_AUTO_LOAD_SIZE = 20 * 1024 * 1024; // 20 MB
 
 export const LightboxModal: React.FC = () => {
   const {
@@ -31,13 +35,20 @@ export const LightboxModal: React.FC = () => {
   const { activeSource } = useSource();
   const { videoSpeed } = useReader();
   const [dimensions, setDimensions] = useState<{ w: number; h: number } | null>(null);
+  const [forceLoadLargeVideo, setForceLoadLargeVideo] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  const isLargeVideo = Boolean(
+    currentItem && currentItem.type === 'video' && (currentItem.size || 0) > MAX_VIDEO_AUTO_LOAD_SIZE
+  );
+
+  const shouldLoadMedia = isOpen && Boolean(currentItem) && (!isLargeVideo || forceLoadLargeVideo);
 
   const { url, loading } = useMediaUrl(
     activeSource,
     currentItem?.path || '',
     currentItem?.name || '',
-    isOpen && Boolean(currentItem)
+    shouldLoadMedia
   );
 
   // Touch swipe support on mobile
@@ -55,6 +66,7 @@ export const LightboxModal: React.FC = () => {
 
   useEffect(() => {
     setDimensions(null);
+    setForceLoadLargeVideo(false);
   }, [currentIndex]);
 
   useEffect(() => {
@@ -148,7 +160,56 @@ export const LightboxModal: React.FC = () => {
           />
         )}
 
-        {url && currentItem.type === 'video' && (
+        {isLargeVideo && !forceLoadLargeVideo && (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '16px',
+              padding: '48px 32px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border)',
+              maxWidth: '440px',
+              textAlign: 'center',
+            }}
+          >
+            <Film size={64} style={{ color: '#38bdf8', opacity: 0.9 }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', wordBreak: 'break-all' }}>
+                {currentItem.name}
+              </span>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                {formatFileSize(currentItem.size)} • Large Video (&gt; 20MB)
+              </span>
+            </div>
+            <button
+              onClick={() => setForceLoadLargeVideo(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 20px',
+                background: 'var(--accent-primary)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: 'var(--radius-md)',
+                fontWeight: 600,
+                fontSize: '13px',
+                cursor: 'pointer',
+                marginTop: '8px',
+                boxShadow: '0 4px 12px rgba(56, 189, 248, 0.25)',
+              }}
+            >
+              <Play size={16} fill="#ffffff" />
+              Load &amp; Play Video
+            </button>
+          </div>
+        )}
+
+        {url && currentItem.type === 'video' && (!isLargeVideo || forceLoadLargeVideo) && (
           <video
             ref={videoRef}
             src={url}

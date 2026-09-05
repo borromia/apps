@@ -1,4 +1,4 @@
-export type SourceType = 'filesystem' | 's3' | 'custom';
+export type SourceType = 'filesystem' | 's3' | 'zerostorage' | 'custom';
 
 export interface StorageNode {
   name: string;
@@ -32,6 +32,11 @@ export interface S3Credentials {
   accessKeyId: string;
   secretAccessKey: string;
   prefix?: string;
+}
+
+export interface ZeroStorageCredentials {
+  apiKey: string;
+  apiBaseUrl?: string;
 }
 
 export interface StorageSource {

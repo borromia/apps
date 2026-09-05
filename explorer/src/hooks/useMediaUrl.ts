@@ -24,20 +24,30 @@ export function useMediaUrl(
     setLoading(true);
     setError(null);
 
-    source
-      .getFileBlob(path, fileName)
-      .then((blob) => {
+    const loadMedia = async () => {
+      try {
+        if (source.getFileUrl) {
+          const directUrl = await source.getFileUrl(path, fileName);
+          if (!isMounted) return;
+          setUrl(directUrl);
+          setLoading(false);
+          return;
+        }
+
+        const blob = await source.getFileBlob(path, fileName);
         if (!isMounted) return;
         createdUrl = URL.createObjectURL(blob);
         setUrl(createdUrl);
         setLoading(false);
-      })
-      .catch((err) => {
+      } catch (err: any) {
         if (!isMounted) return;
-        console.error(`Failed to load blob for ${fileName}:`, err);
+        console.error(`Failed to load media for ${fileName}:`, err);
         setError(err.message || 'Failed to load media');
         setLoading(false);
-      });
+      }
+    };
+
+    loadMedia();
 
     return () => {
       isMounted = false;
