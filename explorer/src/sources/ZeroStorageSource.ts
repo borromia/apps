@@ -37,7 +37,7 @@ class RateLimiter {
   private timeWindowMs: number;
   private timer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(maxRequests = 8, timeWindowMs = 1000) {
+  constructor(maxRequests = 15, timeWindowMs = 1000) {
     this.maxRequests = maxRequests;
     this.timeWindowMs = timeWindowMs;
   }
@@ -105,7 +105,7 @@ export class ZeroStorageSource implements StorageSource {
 
   private config: ZeroStorageCredentials | null = null;
   private apiBaseUrl = 'https://zerostorage.net/api';
-  private rateLimiter = new RateLimiter(8, 1000); // 8 requests per second max
+  private rateLimiter = new RateLimiter(15, 1000); // 15 requests per second max
 
   // Dynamic caches
   private foldersById = new Map<string, ZeroStorageRawFolder>();
